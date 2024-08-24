@@ -1,4 +1,4 @@
-package personal.investwallet.hibernate;
+package personal.investwallet.config;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -17,8 +17,9 @@ import org.springframework.orm.jpa.vendor.HibernateJpaVendorAdapter;
 
 @Configuration
 public class HibernateConfig {
+
     private final JpaProperties jpaProperties;
-    private final String jpaPathPackagesToScan = "personal.investwallet.*";
+    private final String jpaPathPackagesToScan = "personal.investwallet*";
 
     public HibernateConfig(JpaProperties jpaProperties) {
         this.jpaProperties = jpaProperties;
@@ -29,21 +30,20 @@ public class HibernateConfig {
         return new HibernateJpaVendorAdapter();
     }
 
-    public LocalContainerEntityManagerFactoryBean entityManagerFactory(
-        DataSource dataSource,
-        MultiTenantConnectionProvider multiTenantConnectionProviderImpl,
-        CurrentTenantIdentifierResolver currentTenantIdentifierResolverImpl
-    ) {
-        Map<String, Object> properties = new HashMap<>(jpaProperties.getProperties());
-        properties.put(Environment.MULTI_TENANT, MultiTenancyStrategy.SCHEMA);
-        properties.put(Environment.MULTI_TENANT_CONNECTION_PROVIDER, multiTenantConnectionProviderImpl);
-        properties.put(Environment.MULTI_TENANT_IDENTIFIER_RESOLVER, currentTenantIdentifierResolverImpl);
+    @Bean
+    LocalContainerEntityManagerFactoryBean entityManagerFactory(
+            DataSource dataSource, MultiTenantConnectionProvider<String> multiTenantConnectionProviderImpl,
+            CurrentTenantIdentifierResolver<String> currentTenantIdentifierResolverImpl) {
+
+        Map<String, Object> jpaPropertiesMap = new HashMap<>(jpaProperties.getProperties());
+        jpaPropertiesMap.put(Environment.MULTI_TENANT_CONNECTION_PROVIDER, multiTenantConnectionProviderImpl);
+        jpaPropertiesMap.put(Environment.MULTI_TENANT_IDENTIFIER_RESOLVER, currentTenantIdentifierResolverImpl);
 
         LocalContainerEntityManagerFactoryBean em = new LocalContainerEntityManagerFactoryBean();
         em.setDataSource(dataSource);
         em.setPackagesToScan(jpaPathPackagesToScan);
         em.setJpaVendorAdapter(jpaVendorAdapter());
-        em.setJpaPropertyMap(properties);
+        em.setJpaPropertyMap(jpaPropertiesMap);
 
         return em;
     }
