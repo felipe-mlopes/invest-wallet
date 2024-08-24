@@ -1,4 +1,4 @@
-package personal.investwallet.user;
+package personal.investwallet.modules.user;
 
 import java.util.Optional;
 import java.util.UUID;

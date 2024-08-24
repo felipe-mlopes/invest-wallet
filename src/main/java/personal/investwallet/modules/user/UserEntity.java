@@ -1,4 +1,4 @@
-package personal.investwallet.user;
+package personal.investwallet.modules.user;
 
 import java.time.Instant;
 import java.util.UUID;
@@ -9,20 +9,19 @@ import org.hibernate.annotations.UpdateTimestamp;
 import jakarta.persistence.*;
 import lombok.Data;
 import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.NoArgsConstructor;
-import personal.investwallet.user.dto.UserCreateDto;
 
-
-@Entity
-@Table(name = "users")
+@Entity(name = "users")
 @Data
+@Builder
 @NoArgsConstructor
 @AllArgsConstructor
 public class UserEntity {
-    
+
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
-    private UUID userId;
+    private UUID id;
 
     @Column(nullable = false)
     private String name;
@@ -38,11 +37,4 @@ public class UserEntity {
 
     @UpdateTimestamp
     private Instant updatedAt;
-
-    public UserEntity(UserCreateDto data) {
-        
-        this.name = data.name();
-        this.email = data.email();
-        this.password = data.password();
-    }
 }
