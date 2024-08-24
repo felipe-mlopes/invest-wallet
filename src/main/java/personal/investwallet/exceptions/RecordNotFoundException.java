@@ -1,4 +1,4 @@
-package personal.investwallet.common.exceptions;
+package personal.investwallet.exceptions;
 
 public class RecordNotFoundException extends RuntimeException {
 
