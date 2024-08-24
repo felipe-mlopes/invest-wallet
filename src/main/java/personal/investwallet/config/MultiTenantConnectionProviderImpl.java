@@ -1,16 +1,19 @@
-package personal.investwallet.hibernate;
+package personal.investwallet.config;
 
 import java.sql.Connection;
 import java.sql.SQLException;
 
 import javax.sql.DataSource;
 
-import org.hibernate.HibernateException;
 import org.hibernate.engine.jdbc.connections.spi.MultiTenantConnectionProvider;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
 @Component
-public class MultiTenantConnectionProviderImpl implements MultiTenantConnectionProvider {
+public class MultiTenantConnectionProviderImpl implements MultiTenantConnectionProvider<String> {
+    private static final Logger logger = LoggerFactory.getLogger(MultiTenantConnectionProviderImpl.class);
+
     private final DataSource datasource;
 
     public MultiTenantConnectionProviderImpl(DataSource datasource) {
@@ -26,27 +29,21 @@ public class MultiTenantConnectionProviderImpl implements MultiTenantConnectionP
     public void releaseAnyConnection(Connection connection) throws SQLException {
         connection.close();
     }
-   
+
     @Override
-    public Connection getConnection(String tentantIdentifier) throws SQLException {
+    public Connection getConnection(String tenantIdentifier) throws SQLException {
+        logger.info("Get connection for tenant " + tenantIdentifier);
         final Connection connection = getAnyConnection();
-
-        try {
-            connection.createStatement().execute("set search_path to " + tentantIdentifier);
-        } catch (SQLException e) {
-            throw new HibernateException("Não foi possível alterar o schema " + tentantIdentifier);
-        }
-
+        connection.setSchema(tenantIdentifier);
         return connection;
     }
-    
+
     @Override
-    public void releaseConnection(String tentantIdentifier, Connection connection) throws SQLException {
-        try (connection) {
-            connection.createStatement().execute("set search_path to " + tentantIdentifier);
-        } catch (SQLException e) {
-            throw new HibernateException("Não foi possível se conectar ao schema " + tentantIdentifier);
-        }
+    public void releaseConnection(String tenantIdentifier, Connection connection) throws SQLException {
+        logger.info("Release connection for tenant " + tenantIdentifier);
+        String DEFAULT_TENANT = "public";
+        connection.setSchema(DEFAULT_TENANT);
+        releaseAnyConnection(connection);
     }
 
     @Override
@@ -55,6 +52,7 @@ public class MultiTenantConnectionProviderImpl implements MultiTenantConnectionP
     }
 
     @Override
+    @SuppressWarnings("rawtypes")
     public boolean isUnwrappableAs(Class aClass) {
         return false;
     }
