@@ -1,4 +1,4 @@
-package personal.investwallet.providers;
+package personal.investwallet.security;
 
 import java.time.Instant;
 import java.time.LocalDateTime;
@@ -15,47 +15,40 @@ import com.auth0.jwt.exceptions.JWTVerificationException;
 import personal.investwallet.modules.user.UserEntity;
 
 @Service
-public class JWTProvider {
-
+public class TokenService {
     @Value("${security.token.secret}")
-    private String secretKey;
+    private String secret;
 
     public String generateToken(UserEntity user) {
-        Algorithm algorithm = Algorithm.HMAC256(secretKey);
-
         try {
+            Algorithm algorithm = Algorithm.HMAC256(secret);
+
             String token = JWT.create()
-                    .withIssuer("user-auth")
-                    .withSubject(user.getId().toString())
+                    .withIssuer("login-auth-api")
+                    .withSubject(user.getEmail())
                     .withExpiresAt(this.generateExpirationDate())
                     .sign(algorithm);
 
             return token;
-        } catch (JWTCreationException ex) {
-            throw new RuntimeException("Error while authentication");
+        } catch (JWTCreationException exception) {
+            throw new RuntimeException("Error while authenticating");
         }
     }
 
     public String validateToken(String token) {
-
-        Algorithm algorithm = Algorithm.HMAC256(secretKey);
-
         try {
-            String tokenDecoded = JWT.require(algorithm)
-                    .withIssuer("user-auth")
+            Algorithm algorithm = Algorithm.HMAC256(secret);
+            return JWT.require(algorithm)
+                    .withIssuer("login-auth-api")
                     .build()
                     .verify(token)
                     .getSubject();
-
-            return tokenDecoded;
-        } catch (JWTVerificationException ex) {
-            ex.printStackTrace();
-
+        } catch (JWTVerificationException exception) {
             return null;
         }
     }
 
     private Instant generateExpirationDate() {
-        return LocalDateTime.now().plusHours(2).toInstant(ZoneOffset.of("UTC-3"));
+        return LocalDateTime.now().plusHours(2).toInstant(ZoneOffset.of("-03:00"));
     }
 }
