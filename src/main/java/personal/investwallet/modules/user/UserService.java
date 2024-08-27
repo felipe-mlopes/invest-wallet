@@ -2,7 +2,6 @@ package personal.investwallet.modules.user;
 
 import java.time.Instant;
 import java.util.Optional;
-import java.util.UUID;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -11,7 +10,7 @@ import org.springframework.stereotype.Service;
 import personal.investwallet.exceptions.RecordNotFoundException;
 import personal.investwallet.modules.user.dto.UserCreateRequestDto;
 import personal.investwallet.modules.user.dto.UserLoginRequestDto;
-import personal.investwallet.providers.JWTProvider;
+import personal.investwallet.security.TokenService;
 
 @Service
 public class UserService {
@@ -23,9 +22,15 @@ public class UserService {
     private PasswordEncoder passwordEncoder;
 
     @Autowired
-    private JWTProvider jwtProvider;
+    private TokenService tokenService;
 
-    public UUID createUser(UserCreateRequestDto payload) {
+    public String createUser(UserCreateRequestDto payload) {
+
+        Optional<UserEntity> user = userRepository.findByEmail(payload.email());
+
+        if (user.isPresent()) {
+            throw new RuntimeException("Usuário já existe.");
+        }
 
         String password = passwordEncoder.encode(payload.password());
 
@@ -36,25 +41,23 @@ public class UserService {
         newUser.setCreatedAt(Instant.now());
         newUser.setUpdatedAt(null);
 
-        var userSaved = userRepository.save(newUser);
+        userRepository.save(newUser);
 
-        return userSaved.getId();
+        return "Usuário cadastrado com sucesso.";
     }
 
     public String authUser(UserLoginRequestDto payload) {
 
-        Optional<UserEntity> user = userRepository.findByEmail(payload.email());
-        if (user.isEmpty()) {
-            throw new RecordNotFoundException("Usuário e/ou senha inválidos.");
-        }
+        UserEntity user = userRepository.findByEmail(payload.email())
+                .orElseThrow(() -> new RecordNotFoundException("Usuário e/ou senha inválidos."));
 
-        var isPasswordValid = passwordEncoder.matches(payload.password(), user.get().getPassword());
+        var isPasswordValid = passwordEncoder.matches(payload.password(), user.getPassword());
 
         if (!isPasswordValid) {
             throw new RecordNotFoundException("Usuário e/ou senha inválidos.");
         }
 
-        String token = jwtProvider.generateToken(user.get());
+        String token = tokenService.generateToken(user);
 
         return token;
     }
