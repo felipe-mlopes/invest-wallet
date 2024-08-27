@@ -12,7 +12,8 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.NoArgsConstructor;
 
-@Entity(name = "users")
+@Entity
+@Table(name = "users")
 @Data
 @Builder
 @NoArgsConstructor
@@ -33,8 +34,10 @@ public class UserEntity {
     private String password;
 
     @CreationTimestamp
+    @Column(updatable = false, name = "created_at")
     private Instant createdAt;
 
     @UpdateTimestamp
+    @Column(name = "updated_at")
     private Instant updatedAt;
 }
