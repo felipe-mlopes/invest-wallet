@@ -1,7 +1,5 @@
 package personal.investwallet.modules.user;
 
-import java.util.UUID;
-
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -22,11 +20,11 @@ public class UserController {
     private UserService userService;
 
     @PostMapping("/register")
-    public ResponseEntity<UUID> create(@Valid @RequestBody UserCreateRequestDto payload) {
+    public ResponseEntity<TokenResponseDTO> create(@Valid @RequestBody UserCreateRequestDto payload) {
 
-        var userId = this.userService.createUser(payload);
+        var message = this.userService.createUser(payload);
 
-        return ResponseEntity.ok(userId);
+        return ResponseEntity.ok(new TokenResponseDTO(message));
     }
 
     @PostMapping("/login")
