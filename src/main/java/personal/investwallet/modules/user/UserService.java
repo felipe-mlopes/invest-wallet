@@ -7,7 +7,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
-import personal.investwallet.exceptions.RecordNotFoundException;
+import personal.investwallet.exceptions.ResourceNotFoundException;
+import personal.investwallet.exceptions.UserAlreadyExistsException;
 import personal.investwallet.modules.user.dto.UserCreateRequestDto;
 import personal.investwallet.modules.user.dto.UserLoginRequestDto;
 import personal.investwallet.security.TokenService;
@@ -29,7 +30,7 @@ public class UserService {
         Optional<UserEntity> user = userRepository.findByEmail(payload.email());
 
         if (user.isPresent()) {
-            throw new RuntimeException("Usuário já existe.");
+            throw new UserAlreadyExistsException("Usuário já existe.");
         }
 
         String password = passwordEncoder.encode(payload.password());
@@ -41,7 +42,7 @@ public class UserService {
         newUser.setCreatedAt(Instant.now());
         newUser.setUpdatedAt(null);
 
-        userRepository.save(newUser);
+        userRepository.insert(newUser);
 
         return "Usuário cadastrado com sucesso.";
     }
@@ -49,17 +50,15 @@ public class UserService {
     public String authUser(UserLoginRequestDto payload) {
 
         UserEntity user = userRepository.findByEmail(payload.email())
-                .orElseThrow(() -> new RecordNotFoundException("Usuário e/ou senha inválidos."));
+                .orElseThrow(() -> new ResourceNotFoundException("Usuário e/ou senha inválidos."));
 
         var isPasswordValid = passwordEncoder.matches(payload.password(), user.getPassword());
 
         if (!isPasswordValid) {
-            throw new RecordNotFoundException("Usuário e/ou senha inválidos.");
+            throw new ResourceNotFoundException("Usuário e/ou senha inválidos.");
         }
 
-        String token = tokenService.generateToken(user);
-
-        return token;
+        return tokenService.generateToken(user);
     }
 
 }
