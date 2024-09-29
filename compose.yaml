@@ -1,9 +1,14 @@
 services:
-  postgres:
-    image: 'postgres:latest'
+  mongo_db:
+    image: 'mongo:latest'
+    restart: unless-stopped
     environment:
-      - 'POSTGRES_DB=postgresql'
-      - 'POSTGRES_PASSWORD=postgres'
-      - 'POSTGRES_USER=postgres'
+      - 'MONGO_INITDB_ROOT_USERNAME=$MONGO_ROOT_USERNAME'
+      - 'MONGO_INITDB_ROOT_PASSWORD=$MONGO_ROOT_PASSWORD'
     ports:
-      - '5432'
+      - '27017:27017'
+    volumes:
+      - 'db:/data/db'
+
+volumes:
+  db:
