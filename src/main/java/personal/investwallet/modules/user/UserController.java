@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import jakarta.validation.Valid;
+import personal.investwallet.modules.user.dto.CreateResponseDTO;
 import personal.investwallet.modules.user.dto.TokenResponseDTO;
 import personal.investwallet.modules.user.dto.UserCreateRequestDto;
 import personal.investwallet.modules.user.dto.UserLoginRequestDto;
@@ -20,11 +21,11 @@ public class UserController {
     private UserService userService;
 
     @PostMapping("/register")
-    public ResponseEntity<TokenResponseDTO> create(@Valid @RequestBody UserCreateRequestDto payload) {
+    public ResponseEntity<CreateResponseDTO> create(@Valid @RequestBody UserCreateRequestDto payload) {
 
-        var message = this.userService.createUser(payload);
+        var message = userService.createUser(payload);
 
-        return ResponseEntity.ok(new TokenResponseDTO(message));
+        return ResponseEntity.created(null).body(new CreateResponseDTO(message));
     }
 
     @PostMapping("/login")
