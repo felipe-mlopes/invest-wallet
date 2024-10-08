@@ -4,6 +4,9 @@ import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 
+import com.auth0.jwt.interfaces.DecodedJWT;
+import jakarta.servlet.http.Cookie;
+import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -49,5 +52,26 @@ public class TokenService {
 
     private Instant generateExpirationDate() {
         return LocalDateTime.now().plusHours(2).toInstant(ZoneOffset.of("-03:00"));
+    }
+
+    public String extractUserIdFromToken(String token) {
+
+        Algorithm algorithm = Algorithm.HMAC256(secret);
+
+        DecodedJWT decodedJWT = JWT.require(algorithm)
+                .build()
+                .verify(token);
+
+        return decodedJWT.getClaim("sub").asString();
+    }
+
+    public void addTokenToCookies(String token, HttpServletResponse response) {
+        Cookie cookie = new Cookie("access_token", token);
+
+        cookie.setMaxAge(24 * 60 * 60); // 1 day
+        cookie.setPath("/");
+        cookie.setHttpOnly(true);
+
+        response.addCookie(cookie);
     }
 }
