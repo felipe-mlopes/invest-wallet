@@ -3,6 +3,7 @@ package personal.investwallet.modules.user;
 import java.time.Instant;
 import java.util.Optional;
 
+import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -47,7 +48,7 @@ public class UserService {
         return "Usuário cadastrado com sucesso.";
     }
 
-    public String authUser(UserLoginRequestDto payload) {
+    public String authUser(UserLoginRequestDto payload, HttpServletResponse response) {
 
         UserEntity user = userRepository.findByEmail(payload.email())
                 .orElseThrow(() -> new ResourceNotFoundException("Usuário e/ou senha inválidos."));
@@ -58,7 +59,11 @@ public class UserService {
             throw new ResourceNotFoundException("Usuário e/ou senha inválidos.");
         }
 
-        return tokenService.generateToken(user);
+        String token = tokenService.generateToken(user);
+
+        tokenService.addTokenToCookies(token, response);
+
+        return token;
     }
 
 }
