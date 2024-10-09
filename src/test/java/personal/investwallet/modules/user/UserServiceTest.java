@@ -1,5 +1,6 @@
 package personal.investwallet.modules.user;
 
+import jakarta.servlet.http.HttpServletResponse;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -11,8 +12,8 @@ import static org.mockito.Mockito.*;
 
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import personal.investwallet.exceptions.ResourceNotFoundException;
 import personal.investwallet.exceptions.ConflictException;
+import personal.investwallet.exceptions.UnauthorizedException;
 import personal.investwallet.modules.user.dto.UserCreateRequestDto;
 import personal.investwallet.modules.user.dto.UserLoginRequestDto;
 import personal.investwallet.security.TokenService;
@@ -31,6 +32,9 @@ class UserServiceTest {
 
     @Mock
     private TokenService tokenService;
+
+    @Mock
+    private HttpServletResponse response;
 
     @InjectMocks
     private UserService userService;
@@ -84,12 +88,13 @@ class UserServiceTest {
             when(passwordEncoder.matches(payload.password(),userEntity.getPassword())).thenReturn(true);
             when(tokenService.generateToken(userEntity)).thenReturn("generatedToken123");
 
-            String result = userService.authUser(payload);
+            String token = userService.authUser(payload, response);
 
             verify(userRepository, times(1)).findByEmail(payload.email());
             verify(passwordEncoder, times(1)).matches(payload.password(), userEntity.getPassword());
             verify(tokenService, times(1)).generateToken(userEntity);
-            assertEquals("generatedToken123", result);
+            verify(tokenService, times(1)).addTokenToCookies("generatedToken123", response);
+            assertEquals("generatedToken123", token);
         }
 
         @Test
@@ -100,7 +105,7 @@ class UserServiceTest {
 
             when(userRepository.findByEmail(payload.email())).thenReturn(Optional.empty());
 
-            assertThrows(ResourceNotFoundException.class, () -> userService.authUser(payload));
+            assertThrows(UnauthorizedException.class, () -> userService.authUser(payload, response));
 
             verify(passwordEncoder, never()).matches(anyString(), anyString());
             verify(tokenService, never()).generateToken(any(UserEntity.class));
@@ -118,7 +123,7 @@ class UserServiceTest {
             when(userRepository.findByEmail(payload.email())).thenReturn(Optional.of(userEntity));
             when(passwordEncoder.matches(payload.password(), userEntity.getPassword())).thenReturn(false);
 
-            assertThrows(ResourceNotFoundException.class, () -> userService.authUser(payload));
+            assertThrows(UnauthorizedException.class, () -> userService.authUser(payload, response));
 
             verify(tokenService, never()).generateToken(any(UserEntity.class));
         }
