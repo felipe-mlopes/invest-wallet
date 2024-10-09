@@ -33,22 +33,6 @@ public class WalletService {
     @Autowired
     private ScraperService scraperService;
 
-    private static PurchasesInfo purchases(PurchasesInfoRequestDto payload) {
-        return new PurchasesInfo(
-                payload.purchaseAmount(),
-                payload.purchasePrice(),
-                payload.purchaseDate()
-        );
-    }
-
-    private static SalesInfo sales(SalesInfoRequestDto payload) {
-        return new SalesInfo(
-                payload.saleAmount(),
-                payload.salePrice(),
-                payload.saleDate()
-        );
-    }
-
     public String addAssetToWallet(String token, AssetCreateRequestDto payload) {
 
         String userId = getUserId(token);
