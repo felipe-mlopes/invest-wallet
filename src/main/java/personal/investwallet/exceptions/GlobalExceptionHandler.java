@@ -20,8 +20,8 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
     }
 
-    @ExceptionHandler(value = UserAlreadyExistsException.class)
-    public ResponseEntity<RestGenericErrorResponseDto> userAlreadyExistsException(UserAlreadyExistsException exception) {
+    @ExceptionHandler(value = ConflictException.class)
+    public ResponseEntity<RestGenericErrorResponseDto> userAlreadyExistsException(ConflictException exception) {
 
         RestGenericErrorResponseDto response = new RestGenericErrorResponseDto(HttpStatus.CONFLICT.value(), HttpStatus.CONFLICT, exception.getMessage());
         return ResponseEntity.status(HttpStatus.CONFLICT).body(response);

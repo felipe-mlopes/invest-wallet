@@ -12,7 +12,7 @@ import static org.mockito.Mockito.*;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import personal.investwallet.exceptions.ResourceNotFoundException;
-import personal.investwallet.exceptions.UserAlreadyExistsException;
+import personal.investwallet.exceptions.ConflictException;
 import personal.investwallet.modules.user.dto.UserCreateRequestDto;
 import personal.investwallet.modules.user.dto.UserLoginRequestDto;
 import personal.investwallet.security.TokenService;
@@ -62,7 +62,7 @@ class UserServiceTest {
 
             when(userRepository.findByEmail(payload.email())).thenReturn(Optional.of(new UserEntity()));
 
-            assertThrows(UserAlreadyExistsException.class, () -> userService.createUser(payload));
+            assertThrows(ConflictException.class, () -> userService.createUser(payload));
             verify(userRepository, never()).insert(any(UserEntity.class));
         }
     }

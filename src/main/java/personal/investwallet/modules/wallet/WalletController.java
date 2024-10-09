@@ -3,10 +3,7 @@ package personal.investwallet.modules.wallet;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import personal.investwallet.modules.wallet.dto.AssetCreateRequestDto;
-import personal.investwallet.modules.wallet.dto.CreateWalletResponseDto;
-import personal.investwallet.modules.wallet.dto.PurchasesInfoRequestDto;
-import personal.investwallet.modules.wallet.dto.UpdateWalletRespondeDto;
+import personal.investwallet.modules.wallet.dto.*;
 
 @RestController
 @RequestMapping("/wallet")
@@ -26,14 +23,25 @@ public class WalletController {
         return ResponseEntity.created(null).body(new CreateWalletResponseDto(result));
     }
 
-    @PatchMapping("/purchase")
-    public ResponseEntity<UpdateWalletRespondeDto> registerPurchaseOfExistingAsset(
+    @PostMapping("/purchase")
+    public ResponseEntity<UpdateWalletRespondeDto> updateAssetWithNewPurchase(
             @CookieValue(value = "access_token") String token,
             @RequestBody PurchasesInfoRequestDto payload
             ) {
 
-        String result = walletService.registerPurchaseOfAnExistingAsset(token, payload);
+        String result = walletService.addPurchaseToAsset(token, payload);
 
-        return ResponseEntity.created(null).body(new UpdateWalletRespondeDto(result));
+        return ResponseEntity.ok(new UpdateWalletRespondeDto(result));
+    }
+
+    @PostMapping("/sale")
+    public ResponseEntity<UpdateWalletRespondeDto> updateAssetWithNewSale(
+            @CookieValue(value = "access_token") String token,
+            @RequestBody SalesInfoRequestDto payload
+    ) {
+
+        String result = walletService.addSaleToAsset(token, payload);
+
+        return ResponseEntity.ok(new UpdateWalletRespondeDto(result));
     }
 }
