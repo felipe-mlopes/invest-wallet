@@ -9,7 +9,8 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import personal.investwallet.exceptions.ResourceNotFoundException;
-import personal.investwallet.exceptions.UserAlreadyExistsException;
+import personal.investwallet.exceptions.ConflictException;
+import personal.investwallet.exceptions.UnauthorizedException;
 import personal.investwallet.modules.user.dto.UserCreateRequestDto;
 import personal.investwallet.modules.user.dto.UserLoginRequestDto;
 import personal.investwallet.security.TokenService;
@@ -31,7 +32,7 @@ public class UserService {
         Optional<UserEntity> user = userRepository.findByEmail(payload.email());
 
         if (user.isPresent()) {
-            throw new UserAlreadyExistsException("Usuário já existe.");
+            throw new ConflictException("Usuário já existe.");
         }
 
         String password = passwordEncoder.encode(payload.password());
@@ -51,12 +52,12 @@ public class UserService {
     public String authUser(UserLoginRequestDto payload, HttpServletResponse response) {
 
         UserEntity user = userRepository.findByEmail(payload.email())
-                .orElseThrow(() -> new ResourceNotFoundException("Usuário e/ou senha inválidos."));
+                .orElseThrow(() -> new UnauthorizedException("Usuário e/ou senha inválidos."));
 
         var isPasswordValid = passwordEncoder.matches(payload.password(), user.getPassword());
 
         if (!isPasswordValid) {
-            throw new ResourceNotFoundException("Usuário e/ou senha inválidos.");
+            throw new UnauthorizedException("Usuário e/ou senha inválidos.");
         }
 
         String token = tokenService.generateToken(user);
