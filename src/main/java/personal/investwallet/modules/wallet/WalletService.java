@@ -2,10 +2,7 @@ package personal.investwallet.modules.wallet;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import personal.investwallet.exceptions.BadRequestException;
-import personal.investwallet.exceptions.ConflictException;
-import personal.investwallet.exceptions.ForbiddenException;
-import personal.investwallet.exceptions.ResourceNotFoundException;
+import personal.investwallet.exceptions.*;
 import personal.investwallet.modules.user.UserRepository;
 import personal.investwallet.modules.wallet.dto.AssetCreateRequestDto;
 import personal.investwallet.modules.wallet.dto.PurchasesInfoRequestDto;
@@ -33,22 +30,6 @@ public class WalletService {
     @Autowired
     private ScraperService scraperService;
 
-    private static PurchasesInfo purchases(PurchasesInfoRequestDto payload) {
-        return new PurchasesInfo(
-                payload.purchaseAmount(),
-                payload.purchasePrice(),
-                payload.purchaseDate()
-        );
-    }
-
-    private static SalesInfo sales(SalesInfoRequestDto payload) {
-        return new SalesInfo(
-                payload.saleAmount(),
-                payload.salePrice(),
-                payload.saleDate()
-        );
-    }
-
     public String addAssetToWallet(String token, AssetCreateRequestDto payload) {
 
         String userId = getUserId(token);
@@ -70,7 +51,7 @@ public class WalletService {
         if (wallet.isPresent()) {
 
             if (wallet.get().getAsset().containsKey(payload.assetName()))
-                throw new ConflictException("O ativo informado já existe na carteira");
+                throw new ConflictException("O ativo informado já existe na carteira.");
 
             walletRepository.addNewAssetByUserId(userId, newAsset.getAssetName(), newAsset);
 
@@ -101,7 +82,7 @@ public class WalletService {
         Asset asset = wallet.getAsset().get(payload.assetName());
 
         if (asset == null)
-            throw new ForbiddenException("O ativo informado não existe na carteira");
+            throw new ForbiddenException("O ativo informado não existe na carteira.");
 
         PurchasesInfo newPurchase = new PurchasesInfo(
                 payload.purchaseAmount(),
@@ -111,7 +92,7 @@ public class WalletService {
 
         walletRepository.addPurchaseToAssetByUserIdAndAssetName(userId, asset.getAssetName(), newPurchase, payload.purchaseAmount());
 
-        return "A compra do seu ativo " + asset.getAssetName() + " foi cadastrada com sucesso" ;
+        return "A compra do seu ativo " + asset.getAssetName() + " foi cadastrada com sucesso." ;
     }
 
     public String addSaleToAsset(String token, SalesInfoRequestDto payload) {
@@ -151,7 +132,7 @@ public class WalletService {
         String userId = tokenService.extractUserIdFromToken(token);
 
         userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("Não é permitido inserir um ativo na carteira sem estar logado"));
+                .orElseThrow(() -> new UnauthorizedException("Não é permitido inserir um ativo na carteira sem estar logado."));
         return userId;
     }
 
