@@ -1,18 +1,23 @@
 package personal.investwallet.modules.user;
 
 import java.time.Instant;
+import java.util.Objects;
 import java.util.Optional;
 
 import jakarta.servlet.http.HttpServletResponse;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.Cache;
+import org.springframework.cache.CacheManager;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
-import personal.investwallet.exceptions.ResourceNotFoundException;
 import personal.investwallet.exceptions.ConflictException;
 import personal.investwallet.exceptions.UnauthorizedException;
 import personal.investwallet.modules.user.dto.UserCreateRequestDto;
 import personal.investwallet.modules.user.dto.UserLoginRequestDto;
+import personal.investwallet.modules.user.dto.UserValidateRequestDto;
 import personal.investwallet.security.TokenService;
 
 @Service
@@ -25,7 +30,12 @@ public class UserService {
     private PasswordEncoder passwordEncoder;
 
     @Autowired
+    private CacheManager cacheManager;
+
+    @Autowired
     private TokenService tokenService;
+
+    private final Logger log = LogManager.getLogger();
 
     public String createUser(UserCreateRequestDto payload) {
 
@@ -42,11 +52,38 @@ public class UserService {
         newUser.setEmail(payload.email());
         newUser.setPassword(password);
         newUser.setCreatedAt(Instant.now());
-        newUser.setUpdatedAt(null);
 
         userRepository.insert(newUser);
 
+        log.info("Usuário %s cadastrado com sucesso!".formatted(payload.name()));
+
         return "Usuário cadastrado com sucesso.";
+    }
+
+    public String validateUser(UserValidateRequestDto payload) {
+
+        userRepository.findByEmail(payload.email())
+                .orElseThrow(() -> new UnauthorizedException("Email inválido."));
+
+        Cache cache = cacheManager.getCache("verificationCodes");
+
+        if (cache != null) {
+
+            String cachedCode = cache.get(payload.email(), String.class);
+
+            if (cachedCode != null && cachedCode.equals(payload.code())) {
+
+                userRepository.updateCheckedAsTrueByEmail(payload.email(), Instant.now());
+
+                cache.evict(payload.email());
+
+                return "Validação concluída com sucesso!";
+            } else {
+                throw new UnauthorizedException("O código informado não confere.");
+            }
+        } else {
+            throw new UnauthorizedException("Tempo de validação expirado.");
+        }
     }
 
     public String authUser(UserLoginRequestDto payload, HttpServletResponse response) {
@@ -54,10 +91,14 @@ public class UserService {
         UserEntity user = userRepository.findByEmail(payload.email())
                 .orElseThrow(() -> new UnauthorizedException("Usuário e/ou senha inválidos."));
 
-        var isPasswordValid = passwordEncoder.matches(payload.password(), user.getPassword());
+        boolean isPasswordValid = passwordEncoder.matches(payload.password(), user.getPassword());
 
         if (!isPasswordValid) {
             throw new UnauthorizedException("Usuário e/ou senha inválidos.");
+        }
+
+        if (!user.isChecked()) {
+            throw new UnauthorizedException("Usuário não confirmou seu cadastro por e-mail.");
         }
 
         String token = tokenService.generateToken(user);
