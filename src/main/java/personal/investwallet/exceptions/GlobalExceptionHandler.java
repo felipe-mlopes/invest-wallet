@@ -27,6 +27,20 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
     }
 
+    @ExceptionHandler(value = UnauthorizedException.class)
+    public ResponseEntity<RestGenericErrorResponseDto> unauthorizedException(UnauthorizedException exception) {
+
+        RestGenericErrorResponseDto response = new RestGenericErrorResponseDto(HttpStatus.UNAUTHORIZED.value(), HttpStatus.UNAUTHORIZED, exception.getMessage());
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(response);
+    }
+
+    @ExceptionHandler(value = BadRequestException.class)
+    public ResponseEntity<RestGenericErrorResponseDto> badRequestException(BadRequestException exception) {
+
+        RestGenericErrorResponseDto response = new RestGenericErrorResponseDto(HttpStatus.BAD_REQUEST.value(), HttpStatus.BAD_REQUEST, exception.getMessage());
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
+    }
+
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<RestValidationErrorResponseDto> handleArgsNotValidExceptions(MethodArgumentNotValidException exception) {
 
