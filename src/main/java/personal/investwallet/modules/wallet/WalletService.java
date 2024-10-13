@@ -85,6 +85,7 @@ public class WalletService {
             throw new ForbiddenException("O ativo informado não existe na carteira.");
 
         PurchasesInfo newPurchase = new PurchasesInfo(
+                UUID.randomUUID().toString(),
                 payload.purchaseAmount(),
                 payload.purchasePrice(),
                 payload.purchaseDate()
@@ -118,6 +119,7 @@ public class WalletService {
             throw new BadRequestException("A quantidade de cota do ativo não pode ser negativa.");
 
         SalesInfo newSale = new SalesInfo(
+                UUID.randomUUID().toString(),
                 saleAmount,
                 payload.salePrice(),
                 payload.saleDate()
