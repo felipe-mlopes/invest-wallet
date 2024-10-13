@@ -3,17 +3,14 @@ package personal.investwallet.modules.user;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import jakarta.validation.Valid;
-import personal.investwallet.modules.user.dto.CreateUserResponseDto;
-import personal.investwallet.modules.user.dto.TokenResponseDto;
-import personal.investwallet.modules.user.dto.UserCreateRequestDto;
-import personal.investwallet.modules.user.dto.UserLoginRequestDto;
+import personal.investwallet.modules.mailing.EmailService;
+import personal.investwallet.modules.user.dto.*;
 import personal.investwallet.security.TokenService;
+
+import java.util.concurrent.CompletableFuture;
 
 @RestController
 @RequestMapping("/user")
@@ -23,6 +20,9 @@ public class UserController {
     private UserService userService;
 
     @Autowired
+    private EmailService emailService;
+
+    @Autowired
     private TokenService tokenService;
 
     @PostMapping("/register")
@@ -30,7 +30,17 @@ public class UserController {
 
         String result = userService.createUser(payload);
 
+        CompletableFuture<String> email = emailService.sendUserConfirmationEmail(payload.email());
+
         return ResponseEntity.created(null).body(new CreateUserResponseDto(result));
+    }
+
+    @PatchMapping("/validate")
+    public ResponseEntity<ValidateUserRespondeDto> validate(@Valid @RequestBody UserValidateRequestDto payload) {
+
+        String result = userService.validateUser(payload);
+
+        return ResponseEntity.ok(new ValidateUserRespondeDto(result));
     }
 
     @PostMapping("/login")

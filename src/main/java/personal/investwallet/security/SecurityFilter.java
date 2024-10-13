@@ -14,6 +14,7 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import personal.investwallet.exceptions.ResourceNotFoundException;
 import personal.investwallet.modules.user.UserEntity;
 import personal.investwallet.modules.user.UserRepository;
 
@@ -31,7 +32,7 @@ public class SecurityFilter extends OncePerRequestFilter {
             throws ServletException, IOException {
 
         String requestURI = request.getRequestURI();
-        if ("/user/register".equals(requestURI) || "/user/login".equals(requestURI)) {
+        if ("/user/register".equals(requestURI) || "/user/validate".equals(requestURI) || "/user/login".equals(requestURI)) {
             filterChain.doFilter(request, response);
             return;
         }
@@ -41,7 +42,7 @@ public class SecurityFilter extends OncePerRequestFilter {
 
         if (login != null) {
             UserEntity user = userRepository.findById(login)
-                    .orElseThrow(() -> new RuntimeException("User Not Found"));
+                    .orElseThrow(() -> new ResourceNotFoundException("Usuário não encontrado."));
 
             var authorities = Collections.singletonList(new SimpleGrantedAuthority("ROLE_USER"));
 

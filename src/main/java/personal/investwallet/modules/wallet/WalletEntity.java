@@ -3,6 +3,7 @@ package personal.investwallet.modules.wallet;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
 
@@ -41,6 +42,8 @@ public class WalletEntity {
         @NoArgsConstructor
         public static class PurchasesInfo {
 
+            @Id
+            private String purchaseId;
             private int purchaseAmount;
             private BigDecimal purchasePrice;
             private Instant purchaseDate;
@@ -51,6 +54,8 @@ public class WalletEntity {
         @NoArgsConstructor
         public static class SalesInfo {
 
+            @Id
+            private String saleId;
             private int saleAmount;
             private BigDecimal salePrice;
             private Instant saleDate;

@@ -11,7 +11,7 @@ import java.util.Optional;
 public interface WalletRepository extends MongoRepository<WalletEntity, String> {
 
     Optional<WalletEntity> findByUserId(String userId);
-
+    
     @Query("{ 'userId': ?0 }")
     @Update("{ '$set': { 'asset.?1': ?2 } }")
     void addNewAssetByUserId(String userId, String assetName, WalletEntity.Asset newAsset);
@@ -23,4 +23,8 @@ public interface WalletRepository extends MongoRepository<WalletEntity, String> 
     @Query("{ 'userId': ?0, 'asset.?1.assetName': ?1 }")
     @Update("{ '$push': { 'asset.?1.salesInfo': ?2 }, '$inc': { 'asset.?1.quotaAmount': ?3 } }")
     void addSaleToAssetByUserIdAndAssetName(String userId, String assetName, WalletEntity.Asset.SalesInfo salesInfo, int quotaIncrement);
+
+    @Query("{ 'userId': ?0, 'asset.?1.assetName': ?1 }")
+    @Update("{ '$inc': { 'asset.?1.quotaAmount': ?2 } }")
+    void restoreAmountOfQuotasInAsset(String userId, String assetName, String purchaseId, int previousPurchaseAmount);
 }

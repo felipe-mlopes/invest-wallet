@@ -24,7 +24,7 @@ public class WalletController {
     }
 
     @PostMapping("/purchase")
-    public ResponseEntity<UpdateWalletRespondeDto> updateAssetWithNewPurchase(
+    public ResponseEntity<UpdateWalletRespondeDto> addPurchase(
             @CookieValue(value = "access_token") String token,
             @RequestBody PurchasesInfoRequestDto payload
             ) {
@@ -35,7 +35,7 @@ public class WalletController {
     }
 
     @PostMapping("/sale")
-    public ResponseEntity<UpdateWalletRespondeDto> updateAssetWithNewSale(
+    public ResponseEntity<UpdateWalletRespondeDto> addSale(
             @CookieValue(value = "access_token") String token,
             @RequestBody SalesInfoRequestDto payload
     ) {
