@@ -2,9 +2,6 @@ package personal.investwallet.modules.user;
 
 import java.time.Instant;
 
-import jakarta.validation.constraints.Email;
-import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -32,11 +29,14 @@ public class UserEntity {
 
     private String password;
 
+    @Field("is_checked")
+    private boolean isChecked = false;
+
     @Field("created_at")
     @CreatedDate
     private Instant createdAt;
 
     @Field("updated_at")
     @LastModifiedDate
-    private Instant updatedAt;
+    private Instant updatedAt = null;
 }
