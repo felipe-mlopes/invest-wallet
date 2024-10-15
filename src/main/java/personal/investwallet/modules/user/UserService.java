@@ -17,6 +17,7 @@ import personal.investwallet.exceptions.ConflictException;
 import personal.investwallet.exceptions.UnauthorizedException;
 import personal.investwallet.modules.user.dto.UserCreateRequestDto;
 import personal.investwallet.modules.user.dto.UserLoginRequestDto;
+import personal.investwallet.modules.user.dto.UserRevalidateRequestDto;
 import personal.investwallet.modules.user.dto.UserValidateRequestDto;
 import personal.investwallet.security.TokenService;
 
@@ -41,9 +42,8 @@ public class UserService {
 
         Optional<UserEntity> user = userRepository.findByEmail(payload.email());
 
-        if (user.isPresent()) {
+        if (user.isPresent())
             throw new ConflictException("Usuário já existe.");
-        }
 
         String password = passwordEncoder.encode(payload.password());
 
@@ -86,6 +86,25 @@ public class UserService {
         }
     }
 
+    public void verifyExistingUserAndVerificationCode(UserRevalidateRequestDto payload) {
+
+        UserEntity user = userRepository.findByEmail(payload.email())
+                .orElseThrow(() -> new UnauthorizedException("Email inválido."));
+
+        if (user.isChecked())
+            throw new ConflictException("O cadastro do usuário já está válido.");
+
+        Cache cache = cacheManager.getCache("verificationCodes");
+
+        if (cache != null) {
+            String cachedCode = cache.get(payload.email(), String.class);
+
+            if (cachedCode != null)
+                throw new ConflictException("O código de verificação enviado anteriormente ainda está válido.");
+
+        }
+    }
+
     public String authUser(UserLoginRequestDto payload, HttpServletResponse response) {
 
         UserEntity user = userRepository.findByEmail(payload.email())
@@ -93,16 +112,13 @@ public class UserService {
 
         boolean isPasswordValid = passwordEncoder.matches(payload.password(), user.getPassword());
 
-        if (!isPasswordValid) {
+        if (!isPasswordValid)
             throw new UnauthorizedException("Usuário e/ou senha inválidos.");
-        }
 
-        if (!user.isChecked()) {
+        if (!user.isChecked())
             throw new UnauthorizedException("Usuário não confirmou seu cadastro por e-mail.");
-        }
 
         String token = tokenService.generateToken(user);
-
         tokenService.addTokenToCookies(token, response);
 
         return token;

@@ -32,7 +32,12 @@ public class SecurityFilter extends OncePerRequestFilter {
             throws ServletException, IOException {
 
         String requestURI = request.getRequestURI();
-        if ("/user/register".equals(requestURI) || "/user/validate".equals(requestURI) || "/user/login".equals(requestURI)) {
+        if (
+                "/user/register".equals(requestURI) ||
+                "/user/validate".equals(requestURI) ||
+                "/user/revalidate".equals(requestURI) ||
+                "/user/login".equals(requestURI)
+        ) {
             filterChain.doFilter(request, response);
             return;
         }

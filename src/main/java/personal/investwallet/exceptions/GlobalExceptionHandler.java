@@ -48,8 +48,8 @@ public class GlobalExceptionHandler {
                 error -> error.getField() + ": " + error.getDefaultMessage()
         ).toList();
 
-        RestValidationErrorResponseDto response = new RestValidationErrorResponseDto(HttpStatus.FORBIDDEN.value() ,HttpStatus.FORBIDDEN, errorList);
+        RestValidationErrorResponseDto response = new RestValidationErrorResponseDto(HttpStatus.BAD_REQUEST.value() ,HttpStatus.BAD_REQUEST, errorList);
 
-        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(response);
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
     }
 }

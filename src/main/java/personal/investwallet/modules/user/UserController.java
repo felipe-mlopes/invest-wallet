@@ -43,6 +43,16 @@ public class UserController {
         return ResponseEntity.ok(new ValidateUserRespondeDto(result));
     }
 
+    @PostMapping("/revalidate")
+    public ResponseEntity<RevalidateUserResponseDto> revalidate(@Valid @RequestBody UserRevalidateRequestDto payload) {
+
+        userService.verifyExistingUserAndVerificationCode(payload);
+
+        CompletableFuture<String> email = emailService.sendUserConfirmationEmail(payload.email());
+
+        return ResponseEntity.ok(new RevalidateUserResponseDto("Código de confirmação reenviado"));
+    }
+
     @PostMapping("/login")
     public ResponseEntity<TokenResponseDto> login(@Valid @RequestBody UserLoginRequestDto payload, HttpServletResponse response) {
 

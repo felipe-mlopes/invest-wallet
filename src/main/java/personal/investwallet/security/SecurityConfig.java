@@ -33,6 +33,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests(authorize -> authorize
                         .requestMatchers(HttpMethod.POST, "/user/register").permitAll()
                         .requestMatchers(HttpMethod.PATCH, "/user/validate").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/user/revalidate").permitAll()
                         .requestMatchers(HttpMethod.POST, "/user/login").permitAll()
                         .anyRequest().authenticated())
                 .addFilterBefore(securityFilter, UsernamePasswordAuthenticationFilter.class);
