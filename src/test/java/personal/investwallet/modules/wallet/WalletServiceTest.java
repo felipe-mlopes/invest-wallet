@@ -21,7 +21,7 @@ import personal.investwallet.security.TokenService;
 
 import java.math.BigDecimal;
 import java.time.Instant;
-import java.util.HashSet;
+import java.util.ArrayList;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -113,7 +113,7 @@ class WalletServiceTest {
 
             // ARRANGE
             AssetCreateRequestDto payload = getAssetCreateRequestDto();
-            WalletEntity.Asset asset = new WalletEntity.Asset(payload.assetName(), payload.quotaAmount(), new HashSet<>(), new HashSet<>());
+            WalletEntity.Asset asset = new WalletEntity.Asset(payload.assetName(), payload.quotaAmount(), new ArrayList<>(), new ArrayList<>());
             WalletEntity existingWallet = new WalletEntity();
             existingWallet.setUserId(USER_ID);
             existingWallet.getAsset().put(asset.getAssetName(), asset);
@@ -215,14 +215,13 @@ class WalletServiceTest {
         private static PurchasesInfoRequestDto getPurchasesInfoRequestDto() {
             String dateTimeString = "2024-10-06T10:00:00.000Z";
 
-            PurchasesInfoRequestDto payload = new PurchasesInfoRequestDto(
+            return new PurchasesInfoRequestDto(
                     ASSET_NAME,
                     ASSET_TYPE,
                     10,
                     BigDecimal.valueOf(25.20),
                     Instant.parse(dateTimeString)
             );
-            return payload;
         }
     }
 
@@ -305,11 +304,11 @@ class WalletServiceTest {
 
         @Test
         @DisplayName("Should not be able to add purchase to asset when quota amount is less than sale amount")
-        void shoulNotBeAbleToAddPurchaseToAssetWhenQuotaAmountIsLessThanSaleAmount() {
+        void shouldNotBeAbleToAddPurchaseToAssetWhenQuotaAmountIsLessThanSaleAmount() {
 
             SalesInfoRequestDto payload = getSalesInfoRequestDto();
 
-            WalletEntity.Asset asset = new WalletEntity.Asset(ASSET_NAME, 5, new HashSet<>(), new HashSet<>());
+            WalletEntity.Asset asset = new WalletEntity.Asset(ASSET_NAME, 5, new ArrayList<>(), new ArrayList<>());
             WalletEntity wallet = new WalletEntity();
             wallet.setUserId(USER_ID);
             wallet.getAsset().put(asset.getAssetName(), asset);
@@ -327,14 +326,13 @@ class WalletServiceTest {
         private static SalesInfoRequestDto getSalesInfoRequestDto() {
             String dateTimeString = "2024-10-06T10:00:00.000Z";
 
-            SalesInfoRequestDto payload = new SalesInfoRequestDto(
+            return new SalesInfoRequestDto(
                     ASSET_NAME,
                     ASSET_TYPE,
                     10,
                     BigDecimal.valueOf(25.20),
                     Instant.parse(dateTimeString)
             );
-            return payload;
         }
     }
 
