@@ -44,4 +44,30 @@ public class WalletController {
 
         return ResponseEntity.ok(new UpdateWalletRespondeDto(result));
     }
+
+    @DeleteMapping("/{assetType}/{assetName}/purchases/{purchaseId}")
+    public ResponseEntity<UpdateWalletRespondeDto> removePurchase(
+            @CookieValue(value = "access_token") String token,
+            @PathVariable String assetType,
+            @PathVariable String assetName,
+            @PathVariable String purchaseId
+    ) {
+
+        String result = walletService.removePurchaseToAssetByPurchaseId(token, assetType, assetName, purchaseId);
+
+        return ResponseEntity.ok(new UpdateWalletRespondeDto(result));
+    }
+
+    @DeleteMapping("/{assetType}/{assetName}/sales/{saleId}")
+    public ResponseEntity<UpdateWalletRespondeDto> removeSale(
+            @CookieValue(value = "access_token") String token,
+            @PathVariable String assetType,
+            @PathVariable String assetName,
+            @PathVariable String saleId
+    ) {
+
+        String result = walletService.removeSaleToAssetBySaleId(token, assetType, assetName, saleId);
+
+        return ResponseEntity.ok(new UpdateWalletRespondeDto(result));
+    }
 }
