@@ -27,7 +27,7 @@ public interface WalletRepository extends MongoRepository<WalletEntity, String> 
 
     @Query("{ 'userId': ?0, 'asset.?1.assetName': ?1 }")
     @Update("{ '$inc': { 'asset.?1.quotaAmount': ?2 } }")
-    void restoreAmountOfQuotasInAsset(String userId, String assetName, String purchaseId, int previousPurchaseAmount);
+    void restoreAmountOfQuotasInAsset(String userId, String assetName, int previousPurchaseAmount);
 
     @Query("{ 'userId': ?0, 'asset.?1.assetName': ?1 }")
     @Update("{ '$set': { 'asset.?1.purchasesInfo': ?2 }, '$inc': { 'asset.?1.quotaAmount': ?3 } }")
