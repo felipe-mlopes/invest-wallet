@@ -10,8 +10,8 @@ import org.springframework.data.mongodb.core.mapping.Document;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 @Data
 @AllArgsConstructor
@@ -33,9 +33,9 @@ public class WalletEntity {
         private String assetName;
         private int quotaAmount;
 
-        private Set<PurchasesInfo> purchasesInfo;
+        private List<PurchasesInfo> purchasesInfo;
 
-        private Set<SalesInfo> salesInfo;
+        private List<SalesInfo> salesInfo;
 
         @Data
         @AllArgsConstructor
