@@ -10,8 +10,6 @@ import personal.investwallet.modules.mailing.EmailService;
 import personal.investwallet.modules.user.dto.*;
 import personal.investwallet.security.TokenService;
 
-import java.util.concurrent.CompletableFuture;
-
 @RestController
 @RequestMapping("/user")
 public class UserController {
@@ -30,7 +28,7 @@ public class UserController {
 
         String result = userService.createUser(payload);
 
-        CompletableFuture<String> email = emailService.sendUserConfirmationEmail(payload.email());
+        emailService.sendUserConfirmationEmail(payload.email());
 
         return ResponseEntity.created(null).body(new CreateUserResponseDto(result));
     }
@@ -48,7 +46,7 @@ public class UserController {
 
         userService.verifyExistingUserAndVerificationCode(payload);
 
-        CompletableFuture<String> email = emailService.sendUserConfirmationEmail(payload.email());
+        emailService.sendUserConfirmationEmail(payload.email());
 
         return ResponseEntity.ok(new RevalidateUserResponseDto("Código de confirmação reenviado"));
     }

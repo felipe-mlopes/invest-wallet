@@ -8,7 +8,7 @@ public record UserValidateRequestDto(
         String email,
 
         @NotBlank(message = "O código de verificação não pode ser vazio")
-        @Pattern(regexp = "\\d{4}", message = "O código de verificação deve conter 4 dígitos")
+        @Pattern(regexp = "[A-Za-z0-9]{4}", message = "O código de verificação deve conter 4 dígitos")
         String code
 ) {
 }
