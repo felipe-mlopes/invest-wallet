@@ -44,8 +44,8 @@ public class WalletService {
         Asset newAsset = new Asset(
                 payload.assetName(),
                 payload.quotaAmount(),
-                new HashSet<>(),
-                new HashSet<>()
+                new ArrayList<>(),
+                new ArrayList<>()
         );
 
         if (wallet.isPresent()) {
@@ -96,6 +96,40 @@ public class WalletService {
         return "A compra do seu ativo " + asset.getAssetName() + " foi cadastrada com sucesso." ;
     }
 
+    public String removePurchaseToAssetByPurchaseId(String token, String assetType, String assetName, String purchaseId) {
+
+        String userId = getUserId(token);
+
+        boolean isAssetExists = verifyAssetNameExists(assetType, assetName);
+
+        if (!isAssetExists)
+            throw new ResourceNotFoundException("O ativo informado não existe.");
+
+        WalletEntity wallet = walletRepository.findByUserId(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("Carteira não encontrada para o usuário informado."));
+
+        Asset asset = wallet.getAsset().get(assetName);
+
+        if (asset == null)
+            throw new ForbiddenException("O ativo informado não existe na carteira.");
+
+        int purchaseAmount = - 1 * asset.getPurchasesInfo().stream()
+                .filter(purchase -> purchase.getPurchaseId().equals(purchaseId))
+                .toList()
+                .get(0)
+                .getPurchaseAmount();
+
+        boolean purchaseInfoRemove = asset.getPurchasesInfo().removeIf(purchase -> purchase.getPurchaseId().equals(purchaseId));
+
+        if (!purchaseInfoRemove) {
+            throw new ResourceNotFoundException("Venda com o ID fornecido não encontrada.");
+        }
+
+        walletRepository.updatePurchaseInAssetByPurchaseId(userId, assetName, asset.getPurchasesInfo(), purchaseAmount);
+
+        return "A compra " + purchaseId + " do ativo " + assetName + " foi removida com sucesso.";
+    }
+
     public String addSaleToAsset(String token, SalesInfoRequestDto payload) {
 
         String userId = getUserId(token);
@@ -120,14 +154,48 @@ public class WalletService {
 
         SalesInfo newSale = new SalesInfo(
                 UUID.randomUUID().toString(),
-                saleAmount,
+                payload.saleAmount(),
                 payload.salePrice(),
                 payload.saleDate()
         );
 
-        walletRepository.addSaleToAssetByUserIdAndAssetName(userId, asset.getAssetName(), newSale, payload.saleAmount());
+        walletRepository.addSaleToAssetByUserIdAndAssetName(userId, asset.getAssetName(), newSale, saleAmount);
 
         return "A venda do seu ativo " + asset.getAssetName() + " foi cadastrada com sucesso." ;
+    }
+
+    public String removeSaleToAssetBySaleId(String token, String assetType, String assetName, String saleId) {
+
+        String userId = getUserId(token);
+
+        boolean isAssetExists = verifyAssetNameExists(assetType, assetName);
+
+        if (!isAssetExists)
+            throw new ResourceNotFoundException("O ativo informado não existe.");
+
+        WalletEntity wallet = walletRepository.findByUserId(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("Carteira não encontrada para o usuário informado."));
+
+        Asset asset = wallet.getAsset().get(assetName);
+
+        if (asset == null)
+            throw new ForbiddenException("O ativo informado não existe na carteira.");
+
+        int saleAmount = asset.getSalesInfo().stream()
+                .filter(sale -> sale.getSaleId().equals(saleId))
+                .toList()
+                .get(0)
+                .getSaleAmount();
+
+        boolean saleInfoRemove = asset.getSalesInfo().removeIf(sale -> sale.getSaleId().equals(saleId));
+
+        if (!saleInfoRemove) {
+            throw new ResourceNotFoundException("Venda com o ID fornecido não encontrada.");
+        }
+
+        walletRepository.updateSaleInAssetBySaleId(userId, assetName, asset.getSalesInfo(), saleAmount);
+
+        return "A venda " + saleId + " do ativo " + assetName + " foi removida com sucesso.";
     }
 
     private String getUserId(String token) {
