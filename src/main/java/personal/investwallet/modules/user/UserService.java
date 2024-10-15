@@ -1,7 +1,6 @@
 package personal.investwallet.modules.user;
 
 import java.time.Instant;
-import java.util.Objects;
 import java.util.Optional;
 
 import jakarta.servlet.http.HttpServletResponse;
