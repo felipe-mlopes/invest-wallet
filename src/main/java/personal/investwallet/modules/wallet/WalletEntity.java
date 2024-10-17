@@ -5,6 +5,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.index.CompoundIndex;
+import org.springframework.data.mongodb.core.index.CompoundIndexes;
 import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
 
@@ -14,10 +15,12 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-@CompoundIndex(def = "{ userId: 1, assetName: 1 }", name = "idx0")
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
+@CompoundIndexes({
+        @CompoundIndex(name = "user_asset_idx", def = "{'userId': 1, 'asset.assetName': 1}")
+})
 @Document(collection = "wallets")
 public class WalletEntity {
 
@@ -45,6 +48,7 @@ public class WalletEntity {
         public static class PurchasesInfo {
 
             @Id
+            @Indexed(unique = true)
             private String purchaseId;
             private int purchaseAmount;
             private BigDecimal purchasePrice;
@@ -57,6 +61,7 @@ public class WalletEntity {
         public static class SalesInfo {
 
             @Id
+            @Indexed(unique = true)
             private String saleId;
             private int saleAmount;
             private BigDecimal salePrice;
