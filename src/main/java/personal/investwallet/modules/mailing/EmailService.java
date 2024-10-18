@@ -12,8 +12,6 @@ import org.springframework.stereotype.Service;
 
 import java.util.Objects;
 import java.util.UUID;
-import java.util.concurrent.CompletableFuture;
-
 
 @Service
 public class EmailService {
@@ -30,7 +28,7 @@ public class EmailService {
     private final Logger log = LogManager.getLogger();
 
     @Async
-    public CompletableFuture<String> sendUserConfirmationEmail(String to) {
+    public void sendUserConfirmationEmail(String to) {
 
         String subject = "Validação do cadastro";
         String codeVerification = generateCodeVerification();
@@ -47,8 +45,6 @@ public class EmailService {
             log.info("Email enviado ao %s com sucesso!".formatted(to));
 
             Objects.requireNonNull(cacheManager.getCache("verificationCodes")).put(to, codeVerification);
-
-            return CompletableFuture.completedFuture("Sucesso! E-mail enviado para: " + to);
 
         } catch (Exception e) {
             throw new RuntimeException( "Erro ao tentar enviar email. " + e.getLocalizedMessage());
