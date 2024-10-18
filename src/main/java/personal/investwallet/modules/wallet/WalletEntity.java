@@ -8,6 +8,9 @@ import org.springframework.data.mongodb.core.index.CompoundIndex;
 import org.springframework.data.mongodb.core.index.CompoundIndexes;
 import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
+import org.springframework.data.mongodb.core.mapping.Field;
+import org.springframework.data.mongodb.core.mapping.FieldType;
+import org.springframework.data.mongodb.core.mapping.MongoId;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -18,13 +21,19 @@ import java.util.Map;
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-@CompoundIndexes({
-        @CompoundIndex(name = "user_asset_idx", def = "{'userId': 1, 'asset.assetName': 1}")
-})
 @Document(collection = "wallets")
+@CompoundIndexes({
+        @CompoundIndex(name = "user_asset_idx", def = "{'userId': 1, 'asset.assetName': 1}"),
+        @CompoundIndex(name = "purchase_idx", def = "{'asset.purchasesInfo.purchaseId': 1}"),
+        @CompoundIndex(name = "sale_idx", def = "{'asset.salesInfo.saleId': 1}")
+})
 public class WalletEntity {
 
+    @MongoId(FieldType.OBJECT_ID)
+    private String id;
+
     @Indexed(unique = true)
+    @Field("user_id")
     private String userId;
 
     private Map<String, Asset> asset = new HashMap<>();
@@ -34,12 +43,16 @@ public class WalletEntity {
     @NoArgsConstructor
     public static class Asset {
 
-        @Indexed(unique = true)
+        @Field("asset_name")
         private String assetName;
+
+        @Field("quota_amount")
         private int quotaAmount;
 
+        @Field("purchases_info")
         private List<PurchasesInfo> purchasesInfo;
 
+        @Field("sales_info")
         private List<SalesInfo> salesInfo;
 
         @Data
@@ -48,10 +61,16 @@ public class WalletEntity {
         public static class PurchasesInfo {
 
             @Id
-            @Indexed(unique = true)
+            @Field("purchase_id")
             private String purchaseId;
+
+            @Field("purchase_amount")
             private int purchaseAmount;
+
+            @Field("purchase_price")
             private BigDecimal purchasePrice;
+
+            @Field("purchase_date")
             private Instant purchaseDate;
         }
 
@@ -61,10 +80,16 @@ public class WalletEntity {
         public static class SalesInfo {
 
             @Id
-            @Indexed(unique = true)
+            @Field("sale_id")
             private String saleId;
+
+            @Field("sale_amount")
             private int saleAmount;
+
+            @Field("sale_price")
             private BigDecimal salePrice;
+
+            @Field("sale_date")
             private Instant saleDate;
         }
     }
