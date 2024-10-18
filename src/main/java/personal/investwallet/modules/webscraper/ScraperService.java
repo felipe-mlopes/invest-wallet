@@ -1,6 +1,5 @@
 package personal.investwallet.modules.webscraper;
 
-import lombok.extern.slf4j.Slf4j;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.select.Elements;
@@ -8,7 +7,6 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 @Service
-@Slf4j
 public class ScraperService {
 
     @Value("${url.base}")
@@ -30,9 +28,6 @@ public class ScraperService {
             String basePrice = basePriceTag.text().replace(",", ".");
             String basePriceDate = basePriceDateTag.text();
             String basePaymentDate = basePaymentDateTag.text();
-
-
-
 
         } catch (Exception ex) {
            throw new RuntimeException(ex);

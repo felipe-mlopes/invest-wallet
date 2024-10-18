@@ -13,16 +13,17 @@ import personal.investwallet.exceptions.ForbiddenException;
 import personal.investwallet.exceptions.ResourceNotFoundException;
 import personal.investwallet.modules.user.UserEntity;
 import personal.investwallet.modules.user.UserRepository;
-import personal.investwallet.modules.wallet.dto.AssetCreateRequestDto;
-import personal.investwallet.modules.wallet.dto.PurchasesInfoRequestDto;
-import personal.investwallet.modules.wallet.dto.SalesInfoRequestDto;
+import personal.investwallet.modules.wallet.dto.CreateAssetRequestDto;
+import personal.investwallet.modules.wallet.dto.AddPurchaseRequestDto;
+import personal.investwallet.modules.wallet.dto.AddSaleRequestDto;
+import personal.investwallet.modules.wallet.dto.UpdatePurchaseRequestDto;
 import personal.investwallet.modules.webscraper.ScraperService;
 import personal.investwallet.security.TokenService;
 
 import java.math.BigDecimal;
 import java.time.Instant;
-import java.util.ArrayList;
-import java.util.Optional;
+import java.time.temporal.ChronoUnit;
+import java.util.*;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
@@ -58,7 +59,7 @@ class WalletServiceTest {
         void shouldBeAbleToCreateNewWalletByAddingAnAsset() {
 
             // ARRANGE
-            AssetCreateRequestDto payload = getAssetCreateRequestDto();
+            CreateAssetRequestDto payload = getAssetCreateRequestDto();
 
             when(tokenService.extractUserIdFromToken(anyString())).thenReturn(USER_ID);
             when(userRepository.findById(USER_ID)).thenReturn(Optional.of(new UserEntity()));
@@ -79,7 +80,7 @@ class WalletServiceTest {
         void shouldBeAbleToAddNewAssetToWallet() {
 
             // ARRANGE
-            AssetCreateRequestDto payload = getAssetCreateRequestDto();
+            CreateAssetRequestDto payload = getAssetCreateRequestDto();
 
             when(tokenService.extractUserIdFromToken(anyString())).thenReturn(USER_ID);
             when(userRepository.findById(USER_ID)).thenReturn(Optional.of(new UserEntity()));
@@ -98,7 +99,7 @@ class WalletServiceTest {
         @DisplayName("Should not be able to create a new wallet or add a new asset with an asset that does not exist")
         void shouldNotBeAbleToCreateNewWalletOrAddNewAssetWithAnAssetThatDoesNotExist() {
 
-            AssetCreateRequestDto payload = getAssetCreateRequestDto();
+            CreateAssetRequestDto payload = getAssetCreateRequestDto();
 
             when(tokenService.extractUserIdFromToken(anyString())).thenReturn(USER_ID);
             when(userRepository.findById(USER_ID)).thenReturn(Optional.of(new UserEntity()));
@@ -112,7 +113,7 @@ class WalletServiceTest {
         void shouldNotBeAbleToAddAnExistingAssetToWallet() {
 
             // ARRANGE
-            AssetCreateRequestDto payload = getAssetCreateRequestDto();
+            CreateAssetRequestDto payload = getAssetCreateRequestDto();
             WalletEntity.Asset asset = new WalletEntity.Asset(payload.assetName(), payload.quotaAmount(), new ArrayList<>(), new ArrayList<>());
             WalletEntity existingWallet = new WalletEntity();
             existingWallet.setUserId(USER_ID);
@@ -127,8 +128,8 @@ class WalletServiceTest {
             assertThrows(ConflictException.class, () -> walletService.addAssetToWallet(TOKEN, payload));
         }
 
-        private static AssetCreateRequestDto getAssetCreateRequestDto() {
-            return new AssetCreateRequestDto(
+        private static CreateAssetRequestDto getAssetCreateRequestDto() {
+            return new CreateAssetRequestDto(
                     ASSET_NAME,
                     ASSET_TYPE,
                     100
@@ -143,7 +144,7 @@ class WalletServiceTest {
         @DisplayName("Should be able to add purchase to asset")
         void shouldBeAbleToAddPurchaseToAsset() {
 
-            PurchasesInfoRequestDto payload = getPurchasesInfoRequestDto();
+            AddPurchaseRequestDto payload = getPurchasesInfoRequestDto();
 
             WalletEntity wallet = new WalletEntity();
             WalletEntity.Asset asset = new WalletEntity.Asset();
@@ -169,7 +170,7 @@ class WalletServiceTest {
         @DisplayName("Should not be able to add purchase to asset that does not exist")
         void shouldNotBeAbleToAddPurchaseToAssetThatDoesNotExist() {
 
-            PurchasesInfoRequestDto payload = getPurchasesInfoRequestDto();
+            AddPurchaseRequestDto payload = getPurchasesInfoRequestDto();
 
             when(tokenService.extractUserIdFromToken(anyString())).thenReturn(USER_ID);
             when(userRepository.findById(USER_ID)).thenReturn(Optional.of(new UserEntity()));
@@ -184,7 +185,7 @@ class WalletServiceTest {
         @DisplayName("Should not be able to add purchase to asset without having wallet created")
         void shouldNotBeAbleToAddPurchaseToAssetWithoutHavingWalletCreated() {
 
-            PurchasesInfoRequestDto payload = getPurchasesInfoRequestDto();
+            AddPurchaseRequestDto payload = getPurchasesInfoRequestDto();
 
             when(tokenService.extractUserIdFromToken(anyString())).thenReturn(USER_ID);
             when(userRepository.findById(USER_ID)).thenReturn(Optional.of(new UserEntity()));
@@ -200,7 +201,7 @@ class WalletServiceTest {
         @DisplayName("Should not be able to add purchase to asset that is not in wallet")
         void shouldNotBeAbleToAddPurchaseToAssetThatIsNotInWallet() {
 
-            PurchasesInfoRequestDto payload = getPurchasesInfoRequestDto();
+            AddPurchaseRequestDto payload = getPurchasesInfoRequestDto();
 
             when(tokenService.extractUserIdFromToken(anyString())).thenReturn(USER_ID);
             when(userRepository.findById(USER_ID)).thenReturn(Optional.of(new UserEntity()));
@@ -212,15 +213,203 @@ class WalletServiceTest {
             assertEquals("O ativo informado não existe na carteira.", exception.getMessage());
         }
 
-        private static PurchasesInfoRequestDto getPurchasesInfoRequestDto() {
+        private static AddPurchaseRequestDto getPurchasesInfoRequestDto() {
             String dateTimeString = "2024-10-06T10:00:00.000Z";
 
-            return new PurchasesInfoRequestDto(
+            return new AddPurchaseRequestDto(
                     ASSET_NAME,
                     ASSET_TYPE,
                     10,
                     BigDecimal.valueOf(25.20),
                     Instant.parse(dateTimeString)
+            );
+        }
+    }
+
+    @Nested
+    class updatePurchaseToAssetByPurchaseId {
+
+        @Test
+        @DisplayName("Should be able to update asset's purchase info by purchaseId with purchase amount different from the previous one")
+        void shouldBeAbleToUpdateAssetsPurchaseInfoByPurchaseIdWithPurchaseAmountDifferentFromPreviousOne() {
+
+            UpdatePurchaseRequestDto payload = getPurchaseOnUpdateRequestDto();
+
+            WalletEntity wallet = new WalletEntity();
+            WalletEntity.Asset asset = new WalletEntity.Asset();
+            List<WalletEntity.Asset.PurchasesInfo> purchasesInfo = new ArrayList<>();
+
+            WalletEntity.Asset.PurchasesInfo purchase = new WalletEntity.Asset.PurchasesInfo(
+                    "purchase123",
+                    5,
+                    BigDecimal.valueOf(25.78),
+                    Instant.now().minus(30, ChronoUnit.MINUTES)
+            );
+
+            purchasesInfo.add(purchase);
+            asset.setAssetName(ASSET_NAME);
+            asset.setQuotaAmount(20);
+            asset.setPurchasesInfo(purchasesInfo);
+
+            Map<String, WalletEntity.Asset> assetMap = new HashMap<>();
+            assetMap.put(ASSET_NAME, asset);
+            wallet.setAsset(assetMap);
+
+            when(tokenService.extractUserIdFromToken(anyString())).thenReturn(USER_ID);
+            when(userRepository.findById(USER_ID)).thenReturn(Optional.of(new UserEntity()));
+            when(scraperService.verifyIfWebsiteIsValid(ASSET_TYPE, ASSET_NAME)).thenReturn(true);
+            when(walletRepository.findByUserId(USER_ID)).thenReturn(Optional.of(wallet));
+
+            doAnswer(invocationOnMock -> {
+               int restoreAmount = invocationOnMock.getArgument(2);
+               asset.setQuotaAmount(asset.getQuotaAmount() + restoreAmount);
+               return null;
+            }).when(walletRepository).restoreAmountOfQuotasInAsset(
+                    eq(USER_ID), eq(ASSET_NAME), anyInt()
+            );
+
+            doAnswer(invocation -> {
+                int newAmount = invocation.getArgument(3);
+                asset.setQuotaAmount(asset.getQuotaAmount() + newAmount);
+                return null;
+            }).when(walletRepository).updatePurchaseInAssetByPurchaseId(
+                    eq(USER_ID), eq(ASSET_NAME), anyList(), anyInt()
+            );
+
+            String result = walletService.updatePurchaseToAssetByPurchaseId(
+                    TOKEN,
+                    ASSET_TYPE,
+                    ASSET_NAME,
+                    purchase.getPurchaseId(),
+                    payload
+            );
+
+            String message = "A compra " + purchase.getPurchaseId() + " do ativo " + ASSET_NAME + " foi atualizada com sucesso." ;
+
+            verify(walletRepository, times(1)).restoreAmountOfQuotasInAsset(
+                    eq(USER_ID), eq(ASSET_NAME), eq(-5)
+            );
+            verify(walletRepository, times(1)).updatePurchaseInAssetByPurchaseId(
+                    eq(USER_ID), eq(ASSET_NAME), anyList(), eq(10)
+            );
+
+            assertEquals(25, asset.getQuotaAmount());
+            assertEquals(message, result);
+        }
+
+        @Test
+        @DisplayName("Should be able to update asset's purchase info by purchaseId with the same purchase amount as the previous one")
+        void shouldBeAbleToUpdateAssetsPurchaseInfoByPurchaseIdWithSamePurchaseAmountAsPreviousOne() {
+
+            UpdatePurchaseRequestDto payload = getPurchaseOnUpdateRequestDto();
+
+            WalletEntity wallet = new WalletEntity();
+            WalletEntity.Asset asset = new WalletEntity.Asset();
+            List<WalletEntity.Asset.PurchasesInfo> purchasesInfo = new ArrayList<>();
+
+            WalletEntity.Asset.PurchasesInfo purchase = new WalletEntity.Asset.PurchasesInfo(
+                    "purchase123",
+                    10,
+                    BigDecimal.valueOf(25.78),
+                    Instant.now().minus(30, ChronoUnit.MINUTES)
+            );
+
+            purchasesInfo.add(purchase);
+            asset.setAssetName(ASSET_NAME);
+            asset.setQuotaAmount(20);
+            asset.setPurchasesInfo(purchasesInfo);
+
+            Map<String, WalletEntity.Asset> assetMap = new HashMap<>();
+            assetMap.put(ASSET_NAME, asset);
+            wallet.setAsset(assetMap);
+
+            when(tokenService.extractUserIdFromToken(anyString())).thenReturn(USER_ID);
+            when(userRepository.findById(USER_ID)).thenReturn(Optional.of(new UserEntity()));
+            when(scraperService.verifyIfWebsiteIsValid(ASSET_TYPE, ASSET_NAME)).thenReturn(true);
+            when(walletRepository.findByUserId(USER_ID)).thenReturn(Optional.of(wallet));
+
+            doAnswer(invocation -> {
+                return null;
+            }).when(walletRepository).updatePurchaseInAssetByPurchaseId(
+                    eq(USER_ID), eq(ASSET_NAME), anyList(), eq(0))
+            ;
+
+            String result = walletService.updatePurchaseToAssetByPurchaseId(
+                    TOKEN,
+                    ASSET_TYPE,
+                    ASSET_NAME,
+                    purchase.getPurchaseId(),
+                    payload
+            );
+
+            String message = "A compra " + purchase.getPurchaseId() + " do ativo " + ASSET_NAME + " foi atualizada com sucesso." ;
+
+            verify(walletRepository, times(1)).updatePurchaseInAssetByPurchaseId(
+                    eq(USER_ID), eq(ASSET_NAME), anyList(), eq(0)
+            );
+
+            assertEquals(20, asset.getQuotaAmount());
+            assertEquals(message, result);
+        }
+
+        @Test
+        @DisplayName("Should not be able to update info purchase to asset that does not exist")
+        void shouldNotBeAbleToUpdateInfoToAssetByPurchaseIdThatAssetDoesNotExist() {
+
+            UpdatePurchaseRequestDto payload = getPurchaseOnUpdateRequestDto();
+
+            when(tokenService.extractUserIdFromToken(anyString())).thenReturn(USER_ID);
+            when(userRepository.findById(USER_ID)).thenReturn(Optional.of(new UserEntity()));
+            when(scraperService.verifyIfWebsiteIsValid(ASSET_TYPE, ASSET_NAME)).thenReturn(false);
+
+            ResourceNotFoundException exception = assertThrows(ResourceNotFoundException.class, () -> walletService.updatePurchaseToAssetByPurchaseId(
+                    TOKEN, ASSET_TYPE, ASSET_NAME, UUID.randomUUID().toString(), payload
+            ));
+
+            assertEquals("O ativo informado não existe.", exception.getMessage());
+        }
+
+        @Test
+        @DisplayName("Should not be able to add purchase to asset without having wallet created")
+        void shouldNotBeAbleToUpdateInfoToAssetByPurchaseIdWithoutHavingWalletCreated() {
+
+            UpdatePurchaseRequestDto payload = getPurchaseOnUpdateRequestDto();
+
+            when(tokenService.extractUserIdFromToken(anyString())).thenReturn(USER_ID);
+            when(userRepository.findById(USER_ID)).thenReturn(Optional.of(new UserEntity()));
+            when(scraperService.verifyIfWebsiteIsValid(ASSET_TYPE, ASSET_NAME)).thenReturn(true);
+            when(walletRepository.findByUserId(USER_ID)).thenReturn(Optional.empty());
+
+            ResourceNotFoundException exception = assertThrows(ResourceNotFoundException.class,  () -> walletService.updatePurchaseToAssetByPurchaseId(
+                    TOKEN, ASSET_TYPE, ASSET_NAME, UUID.randomUUID().toString(), payload
+            ));
+
+            assertEquals("Carteira não encontrada para o usuário informado.", exception.getMessage());
+        }
+
+        @Test
+        @DisplayName("Should not be able to add purchase to asset that is not in wallet")
+        void shouldNotBeAbleToUpdateInfoToAssetByPurchaseIdThatIsNotInWallet() {
+
+            UpdatePurchaseRequestDto payload = getPurchaseOnUpdateRequestDto();
+
+            when(tokenService.extractUserIdFromToken(anyString())).thenReturn(USER_ID);
+            when(userRepository.findById(USER_ID)).thenReturn(Optional.of(new UserEntity()));
+            when(scraperService.verifyIfWebsiteIsValid(ASSET_TYPE, ASSET_NAME)).thenReturn(true);
+            when(walletRepository.findByUserId(USER_ID)).thenReturn(Optional.of(new WalletEntity()));
+
+            ForbiddenException exception = assertThrows(ForbiddenException.class, () -> walletService.updatePurchaseToAssetByPurchaseId(
+                    TOKEN, ASSET_TYPE, ASSET_NAME, UUID.randomUUID().toString(), payload
+            ));
+
+            assertEquals("O ativo informado não existe na carteira.", exception.getMessage());
+        }
+
+        private static UpdatePurchaseRequestDto getPurchaseOnUpdateRequestDto() {
+            return new UpdatePurchaseRequestDto(
+                    10,
+                    BigDecimal.valueOf(38.14),
+                    Instant.now().minus(30, ChronoUnit.MINUTES)
             );
         }
     }
@@ -232,7 +421,7 @@ class WalletServiceTest {
         @DisplayName("Should be able to add sale to asset")
         void shouldBeAbleToAddSaleToAsset() {
 
-            SalesInfoRequestDto payload = getSalesInfoRequestDto();
+            AddSaleRequestDto payload = getSalesInfoRequestDto();
 
             WalletEntity wallet = new WalletEntity();
             WalletEntity.Asset asset = new WalletEntity.Asset();
@@ -250,7 +439,7 @@ class WalletServiceTest {
             String message = "A venda do seu ativo " + payload.assetName() + " foi cadastrada com sucesso." ;
 
             verify(walletRepository, times(1)).addSaleToAssetByUserIdAndAssetName(
-                    eq(USER_ID), eq("ABCD11"), any(WalletEntity.Asset.SalesInfo.class), eq(10)
+                    eq(USER_ID), eq("ABCD11"), any(WalletEntity.Asset.SalesInfo.class), eq(-10)
             );
             assertEquals(message, result);
         }
@@ -259,7 +448,7 @@ class WalletServiceTest {
         @DisplayName("Should not be able to add sale to asset that does not exist")
         void shouldNotBeAbleToAddSaleToAssetThatDoesNotExist() {
 
-            SalesInfoRequestDto payload = getSalesInfoRequestDto();
+            AddSaleRequestDto payload = getSalesInfoRequestDto();
 
             when(tokenService.extractUserIdFromToken(anyString())).thenReturn(USER_ID);
             when(userRepository.findById(USER_ID)).thenReturn(Optional.of(new UserEntity()));
@@ -274,7 +463,7 @@ class WalletServiceTest {
         @DisplayName("Should not be able to add sale to asset without having wallet created")
         void shouldNotBeAbleToAddSaleToAssetWithoutHavingWalletCreated() {
 
-            SalesInfoRequestDto payload = getSalesInfoRequestDto();
+            AddSaleRequestDto payload = getSalesInfoRequestDto();
 
             when(tokenService.extractUserIdFromToken(anyString())).thenReturn(USER_ID);
             when(userRepository.findById(USER_ID)).thenReturn(Optional.of(new UserEntity()));
@@ -290,7 +479,7 @@ class WalletServiceTest {
         @DisplayName("Should not be able to add sale to asset that is not in wallet")
         void shouldNotBeAbleToAddSaleToAssetThatIsNotInWallet() {
 
-            SalesInfoRequestDto payload = getSalesInfoRequestDto();
+            AddSaleRequestDto payload = getSalesInfoRequestDto();
 
             when(tokenService.extractUserIdFromToken(anyString())).thenReturn(USER_ID);
             when(userRepository.findById(USER_ID)).thenReturn(Optional.of(new UserEntity()));
@@ -306,7 +495,7 @@ class WalletServiceTest {
         @DisplayName("Should not be able to add purchase to asset when quota amount is less than sale amount")
         void shouldNotBeAbleToAddPurchaseToAssetWhenQuotaAmountIsLessThanSaleAmount() {
 
-            SalesInfoRequestDto payload = getSalesInfoRequestDto();
+            AddSaleRequestDto payload = getSalesInfoRequestDto();
 
             WalletEntity.Asset asset = new WalletEntity.Asset(ASSET_NAME, 5, new ArrayList<>(), new ArrayList<>());
             WalletEntity wallet = new WalletEntity();
@@ -323,10 +512,10 @@ class WalletServiceTest {
             assertEquals("A quantidade de cota do ativo não pode ser negativa.", exception.getMessage());
         }
 
-        private static SalesInfoRequestDto getSalesInfoRequestDto() {
+        private static AddSaleRequestDto getSalesInfoRequestDto() {
             String dateTimeString = "2024-10-06T10:00:00.000Z";
 
-            return new SalesInfoRequestDto(
+            return new AddSaleRequestDto(
                     ASSET_NAME,
                     ASSET_TYPE,
                     10,
