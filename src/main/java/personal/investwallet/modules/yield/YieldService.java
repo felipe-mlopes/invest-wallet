@@ -79,24 +79,23 @@ public class YieldService {
 
     private static void extractedByPaymentAt(YieldInfoResponseDto yields, YieldEntity existingYieldEntity) {
 
-        String todayFormattedAt = getYieldAt();
-
         for (Map.Entry<String, Map<String, YieldInfo>> paymentEntry : yields.yieldByPaymentAt().entrySet()) {
             String paymentAt = paymentEntry.getKey();
             Map<String, YieldInfo> yieldInfoMap = paymentEntry.getValue();
 
-            for (Map.Entry<String, YieldInfo> yieldEntry : yieldInfoMap.entrySet()) {
-                String assetName = yieldEntry.getKey();
-                YieldInfo yieldInfo = yieldEntry.getValue();
+            Map<String, YieldInfo> yieldsAlreadySave = existingYieldEntity.getYieldByPaymentAt()
+                    .computeIfAbsent(paymentAt, k -> new HashMap<>());
 
-                boolean isAllYieldExisting = existingYieldEntity.getYieldByPaymentAt().get(todayFormattedAt).containsKey(assetName);
+            for (Map.Entry<String, YieldInfo> assetEntry : yieldInfoMap.entrySet()) {
+                String asset = assetEntry.getKey();
+                YieldInfo newYieldInfo = assetEntry.getValue();
 
-                if (!isAllYieldExisting) {
-                    // Inserir o ativo
+                if (!yieldsAlreadySave.containsKey(asset)) {
+                    yieldsAlreadySave.put(asset, newYieldInfo);
                 }
-
             }
         }
+
     }
 
     private YieldInfoResponseDto generateYieldInfo(List<Object> assets) {
