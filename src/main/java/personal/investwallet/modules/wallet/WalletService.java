@@ -9,6 +9,7 @@ import personal.investwallet.modules.webscraper.ScraperService;
 import personal.investwallet.security.TokenService;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 import static personal.investwallet.modules.wallet.WalletEntity.*;
 import static personal.investwallet.modules.wallet.WalletEntity.Asset.*;
@@ -28,9 +29,36 @@ public class WalletService {
     @Autowired
     private ScraperService scraperService;
 
+    public List<Object> getAllAssets(String token) {
+
+        String userId = tokenService.extractUserIdFromToken(token);
+
+        WalletEntity wallet = walletRepository.findByUserId(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("Nenhuma carteira foi localizada para esse usuário."));;
+
+        return wallet.getAsset().values().stream()
+                .map(asset -> Map.of(
+                        "assetName", asset.getAssetName(),
+                        "assetQuotaAmount", asset.getQuotaAmount()
+                ))
+                .collect(Collectors.toList());
+    }
+
+    public GetQuotaAmountResponseDto getQuotaAmountOfAnAsset(String token, String assetName) {
+
+        String userId = tokenService.extractUserIdFromToken(token);
+
+        WalletEntity wallet = walletRepository.findByUserId(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("Nenhuma carteira foi localizada para esse usuário."));;
+
+        Asset asset = wallet.getAsset().get(assetName);
+
+        return new GetQuotaAmountResponseDto(asset.getQuotaAmount());
+    }
+
     public String addAssetToWallet(String token, CreateAssetRequestDto payload) {
 
-        String userId = getUserId(token);
+        String userId = tokenService.extractUserIdFromToken(token);
 
         boolean isAssetExists = verifyAssetNameExists(payload.assetType(), payload.assetName());
 
@@ -241,8 +269,11 @@ public class WalletService {
     private String getUserId(String token) {
         String userId = tokenService.extractUserIdFromToken(token);
 
-        userRepository.findById(userId)
-                .orElseThrow(() -> new UnauthorizedException("Não é permitido inserir um ativo na carteira sem estar logado."));
+        boolean isWalletExist = walletRepository.existsByUserId(userId);
+
+        if (!isWalletExist)
+            throw new ResourceNotFoundException("Nenhuma carteira foi localizada para esse usuário.");
+
         return userId;
     }
 

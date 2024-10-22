@@ -11,6 +11,8 @@ import java.util.Optional;
 @Repository
 public interface WalletRepository extends MongoRepository<WalletEntity, String> {
 
+    boolean existsByUserId(String userId);
+
     Optional<WalletEntity> findByUserId(String userId);
     
     @Query("{ 'userId': ?0 }")

@@ -5,6 +5,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import personal.investwallet.modules.wallet.dto.*;
+import personal.investwallet.modules.yield.YieldService;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/wallet")
@@ -12,6 +15,29 @@ public class WalletController {
 
     @Autowired
     private WalletService walletService;
+
+    @Autowired
+    private YieldService yieldService;
+
+    @GetMapping("/assets")
+    public ResponseEntity<List<Object>> getAllAssets(@CookieValue(value = "access_token") String token) {
+
+        List<Object> assets = walletService.getAllAssets(token);
+        yieldService.registerAllYieldsReceivedInTheMonth(token, assets);
+
+        return ResponseEntity.ok(assets);
+    }
+
+    @GetMapping("/asset/{assetName}")
+    public ResponseEntity<GetQuotaAmountResponseDto> getQuotaAmount(
+            @CookieValue(value = "access_token") String token,
+            @PathVariable String assetName
+    ) {
+
+        GetQuotaAmountResponseDto result = walletService.getQuotaAmountOfAnAsset(token, assetName);
+
+        return ResponseEntity.ok(result);
+    }
 
     @PostMapping()
     public ResponseEntity<CreateWalletResponseDto> create(
