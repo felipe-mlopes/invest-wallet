@@ -8,6 +8,8 @@ import personal.investwallet.modules.wallet.dto.*;
 import personal.investwallet.modules.webscraper.ScraperService;
 import personal.investwallet.security.TokenService;
 
+import java.math.BigDecimal;
+import java.time.Instant;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -119,34 +121,34 @@ public class WalletService {
             UpdatePurchaseRequestDto payload
     ) {
 
+        if (payload.purchaseAmount() == null && payload.purchasePrice() == null && payload.purchaseDate() == null)
+            throw new BadRequestException("Não há informações de compra para serem atualizadas.");
+
         String userId = getUserId(token);
 
         WalletEntity.Asset asset = getAssetVerified(assetType, assetName,userId);
 
-        PurchasesInfo purchaseSelected = asset.getPurchasesInfo().stream()
-                .filter(purchase -> purchase.getPurchaseId().equals(purchaseId))
-                .toList()
-                .get(0);
+        Optional<PurchasesInfo> purchaseSelected = asset.getPurchasesInfo().stream()
+                .filter(purchase -> purchase.getPurchaseId().equals(purchaseId)).findFirst();
 
-        int purchaseAmount = 0;
-
-        if (payload.purchaseAmount() != null && purchaseSelected.getPurchaseAmount() != payload.purchaseAmount()) {
-            int purchaseAmountRestored = purchaseSelected.getPurchaseAmount() * - 1;
-            walletRepository.restoreAmountOfQuotasInAsset(userId, assetName, purchaseAmountRestored);
-            purchaseAmount = payload.purchaseAmount();
+        if (purchaseSelected.isEmpty()) {
+            throw new ResourceNotFoundException("Não existe compra com o ID informado.");
         }
 
-        boolean purchaseInfoRemove = asset.getPurchasesInfo().removeIf(purchase -> purchase.getPurchaseId().equals(purchaseId));
+        int purchaseAmount = payload.purchaseAmount() != null ? payload.purchaseAmount() : purchaseSelected.get().getPurchaseAmount();
+        BigDecimal purchasePrice = payload.purchasePrice() != null ? payload.purchasePrice() : purchaseSelected.get().getPurchasePrice();
+        Instant purchaseDate = payload.purchaseDate() != null ? payload.purchaseDate() : purchaseSelected.get().getPurchaseDate();
 
-        if (!purchaseInfoRemove) {
-            throw new ResourceNotFoundException("Compra com o ID fornecido não encontrada.");
+        if (payload.purchaseAmount() != null && purchaseSelected.get().getPurchaseAmount() != payload.purchaseAmount()) {
+            int purchaseAmountRestored = purchaseSelected.get().getPurchaseAmount() * - 1;
+            walletRepository.restoreAmountOfQuotasInAsset(userId, assetName, purchaseAmountRestored);
         }
 
         asset.getPurchasesInfo().add(new PurchasesInfo(
                 purchaseId,
-                payload.purchaseAmount(),
-                payload.purchasePrice(),
-                payload.purchaseDate()
+                purchaseAmount,
+                purchasePrice,
+                purchaseDate
         ));
 
         walletRepository.updatePurchaseInAssetByPurchaseId(userId, assetName, asset.getPurchasesInfo(), purchaseAmount);
