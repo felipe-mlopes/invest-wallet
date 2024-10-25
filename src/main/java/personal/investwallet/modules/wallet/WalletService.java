@@ -126,10 +126,11 @@ public class WalletService {
 
         String userId = getUserId(token);
 
-        WalletEntity.Asset asset = getAssetVerified(assetType, assetName,userId);
+        Asset asset = getAssetVerified(assetType, assetName,userId);
 
         Optional<PurchasesInfo> purchaseSelected = asset.getPurchasesInfo().stream()
-                .filter(purchase -> purchase.getPurchaseId().equals(purchaseId)).findFirst();
+                .filter(purchase -> purchase.getPurchaseId().equals(purchaseId))
+                .findFirst();
 
         if (purchaseSelected.isEmpty()) {
             throw new ResourceNotFoundException("Não existe compra com o ID informado.");
@@ -210,37 +211,38 @@ public class WalletService {
             UpdateSaleRequestDto payload
     ) {
 
+        if (payload.saleAmount() == null && payload.salePrice() == null && payload.saleDate() == null)
+            throw new BadRequestException("Não há informações de venda para serem atualizadas.");
+
         String userId = getUserId(token);
 
         Asset asset = getAssetVerified(assetType, assetName,userId);
 
-        SalesInfo saleSelected = asset.getSalesInfo().stream()
+        Optional<SalesInfo> saleSelected = asset.getSalesInfo().stream()
                 .filter(sale -> sale.getSaleId().equals(saleId))
-                .toList()
-                .get(0);
+                .findFirst();
 
-        int saleAmount = 0;
+        if (saleSelected.isEmpty()) {
+            throw new ResourceNotFoundException("Não existe venda com o ID informado.");
+        }
 
-        if (payload.saleAmount() != null && saleSelected.getSaleAmount() != payload.saleAmount()) {
-            int saleAmountRestored = saleSelected.getSaleAmount() * - 1;
+        int saleAmount = payload.saleAmount() != null ? payload.saleAmount() : saleSelected.get().getSaleAmount();
+        BigDecimal salePrice = payload.salePrice() != null ? payload.salePrice() : saleSelected.get().getSalePrice();
+        Instant saleDate = payload.saleDate() != null ? payload.saleDate() : saleSelected.get().getSaleDate();
+
+        if (payload.saleAmount() != null && saleSelected.get().getSaleAmount() != payload.saleAmount()) {
+            int saleAmountRestored = saleSelected.get().getSaleAmount();
             walletRepository.restoreAmountOfQuotasInAsset(userId, assetName, saleAmountRestored);
-            saleAmount = payload.saleAmount();
         }
 
-        boolean purchaseInfoRemove = asset.getPurchasesInfo().removeIf(purchase -> purchase.getPurchaseId().equals(saleId));
-
-        if (!purchaseInfoRemove) {
-            throw new ResourceNotFoundException("Compra com o ID fornecido não encontrada.");
-        }
-
-        asset.getPurchasesInfo().add(new PurchasesInfo(
+        asset.getSalesInfo().add(new SalesInfo(
                 saleId,
-                payload.saleAmount(),
-                payload.salePrice(),
-                payload.saleDate()
+                saleAmount,
+                salePrice,
+                saleDate
         ));
 
-        walletRepository.updatePurchaseInAssetByPurchaseId(userId, assetName, asset.getPurchasesInfo(), saleAmount);
+        walletRepository.updateSaleInAssetBySaleId(userId, assetName, asset.getSalesInfo(), saleAmount);
 
         return "A venda " + saleId + " do ativo " + assetName + " foi atualizada com sucesso.";
     }
