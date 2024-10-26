@@ -36,7 +36,7 @@ public class WalletEntity {
     @Field("user_id")
     private String userId;
 
-    private Map<String, Asset> asset = new HashMap<>();
+    private Map<String, Asset> assets = new HashMap<>();
 
     @Data
     @AllArgsConstructor
