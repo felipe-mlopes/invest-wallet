@@ -11,10 +11,8 @@ import personal.investwallet.exceptions.BadRequestException;
 import personal.investwallet.exceptions.ConflictException;
 import personal.investwallet.exceptions.ForbiddenException;
 import personal.investwallet.exceptions.ResourceNotFoundException;
-import personal.investwallet.modules.user.UserEntity;
-import personal.investwallet.modules.user.UserRepository;
+import personal.investwallet.modules.asset.AssetService;
 import personal.investwallet.modules.wallet.dto.*;
-import personal.investwallet.modules.webscraper.ScraperService;
 import personal.investwallet.security.TokenService;
 
 import java.math.BigDecimal;
@@ -40,7 +38,7 @@ class WalletServiceTest {
     private TokenService tokenService;
 
     @Mock
-    private ScraperService scraperService;
+    private AssetService assetService;
 
     @InjectMocks
     private WalletService walletService;
@@ -53,10 +51,10 @@ class WalletServiceTest {
         void shouldBeAbleToCreateNewWalletByAddingAnAsset() {
 
             // ARRANGE
-            CreateAssetRequestDto payload = getAssetCreateRequestDto();
+            CreateAssetRequestDto payload = getAssetsCreateRequestDto();
 
             when(tokenService.extractUserIdFromToken(anyString())).thenReturn(USER_ID);
-            when(scraperService.verifyIfWebsiteIsValid(payload.assetType(), payload.assetName())).thenReturn(true);
+            when(assetService.getAssetTypeByAssetName(payload.assetName())).thenReturn(ASSET_TYPE);
             when(walletRepository.findByUserId(USER_ID)).thenReturn(Optional.empty());
 
             // ACT
@@ -64,7 +62,7 @@ class WalletServiceTest {
 
             // ASSERT
             verify(walletRepository, times(1)).save(any(WalletEntity.class));
-            assertEquals("Ativo adicionado à carteira com sucesso!", result);
+            assertEquals("Uma nova carteira foi criada e o ativo ABCD11 foi adicionado.", result);
 
         }
 
@@ -73,10 +71,10 @@ class WalletServiceTest {
         void shouldBeAbleToAddNewAssetToWallet() {
 
             // ARRANGE
-            CreateAssetRequestDto payload = getAssetCreateRequestDto();
+            CreateAssetRequestDto payload = getAssetsCreateRequestDto();
 
             when(tokenService.extractUserIdFromToken(anyString())).thenReturn(USER_ID);
-            when(scraperService.verifyIfWebsiteIsValid(payload.assetType(), payload.assetName())).thenReturn(true);
+            when(assetService.getAssetTypeByAssetName(payload.assetName())).thenReturn(ASSET_TYPE);
             when(walletRepository.findByUserId(USER_ID)).thenReturn(Optional.of(new WalletEntity()));
 
             // ACT
@@ -84,17 +82,17 @@ class WalletServiceTest {
 
             // ASSERT
             verify(walletRepository,times(1)).addNewAssetByUserId(eq(USER_ID), eq(payload.assetName()),any(WalletEntity.Asset.class));
-            assertEquals("Ativo adicionado à carteira com sucesso!", result);
+            assertEquals("O ativo ABCD11 foi adicionado à carteira com sucesso.", result);
         }
 
         @Test
         @DisplayName("Should not be able to create a new wallet or add a new asset with an asset that does not exist")
         void shouldNotBeAbleToCreateNewWalletOrAddNewAssetWithAnAssetThatDoesNotExist() {
 
-            CreateAssetRequestDto payload = getAssetCreateRequestDto();
+            CreateAssetRequestDto payload = getAssetsCreateRequestDto();
 
             when(tokenService.extractUserIdFromToken(anyString())).thenReturn(USER_ID);
-            when(scraperService.verifyIfWebsiteIsValid(payload.assetType(), payload.assetName())).thenReturn(false);
+            when(assetService.getAssetTypeByAssetName(payload.assetName())).thenReturn(null);
 
             ResourceNotFoundException exception = assertThrows(ResourceNotFoundException.class, () -> walletService.addAssetToWallet(TOKEN, payload));
             assertEquals("O ativo informado não existe.", exception.getMessage());
@@ -105,14 +103,14 @@ class WalletServiceTest {
         void shouldNotBeAbleToAddAnExistingAssetToWallet() {
 
             // ARRANGE
-            CreateAssetRequestDto payload = getAssetCreateRequestDto();
-            WalletEntity.Asset asset = new WalletEntity.Asset(payload.assetName(), payload.quotaAmount(), new ArrayList<>(), new ArrayList<>());
+            CreateAssetRequestDto payload = getAssetsCreateRequestDto();
+            WalletEntity.Asset asset = new WalletEntity.Asset(payload.assetName(), 0, new ArrayList<>(), new ArrayList<>());
             WalletEntity existingWallet = new WalletEntity();
             existingWallet.setUserId(USER_ID);
-            existingWallet.getAsset().put(asset.getAssetName(), asset);
+            existingWallet.getAssets().put(asset.getAssetName(), asset);
 
             when(tokenService.extractUserIdFromToken(anyString())).thenReturn(USER_ID);
-            when(scraperService.verifyIfWebsiteIsValid(payload.assetType(), payload.assetName())).thenReturn(true);
+            when(assetService.getAssetTypeByAssetName(payload.assetName())).thenReturn(ASSET_TYPE);
             when(walletRepository.findByUserId(USER_ID)).thenReturn(Optional.of(existingWallet));
 
             // ACT & ASSERT
@@ -120,11 +118,9 @@ class WalletServiceTest {
             assertEquals("O ativo informado já existe na carteira.", exception.getMessage());
         }
 
-        private static CreateAssetRequestDto getAssetCreateRequestDto() {
+        private static CreateAssetRequestDto getAssetsCreateRequestDto() {
             return new CreateAssetRequestDto(
-                    ASSET_NAME,
-                    ASSET_TYPE,
-                    100
+                    ASSET_NAME
             );
         }
     }
@@ -140,11 +136,11 @@ class WalletServiceTest {
 
             when(tokenService.extractUserIdFromToken(anyString())).thenReturn(USER_ID);
             when(walletRepository.existsByUserId(USER_ID)).thenReturn(true);
-            when(scraperService.verifyIfWebsiteIsValid(payload.assetType(), payload.assetName())).thenReturn(true);
+            when(assetService.getAssetTypeByAssetName(payload.assetName())).thenReturn(ASSET_TYPE);
 
             WalletEntity wallet = new WalletEntity();
             WalletEntity.Asset asset = new WalletEntity.Asset(ASSET_NAME, 10, new ArrayList<>(), new ArrayList<>());
-            wallet.getAsset().put(ASSET_NAME, asset);
+            wallet.getAssets().put(ASSET_NAME, asset);
 
             when(walletRepository.findByUserId(USER_ID)).thenReturn(Optional.of(wallet));
 
@@ -166,7 +162,7 @@ class WalletServiceTest {
 
             when(tokenService.extractUserIdFromToken(anyString())).thenReturn(USER_ID);
             when(walletRepository.existsByUserId(USER_ID)).thenReturn(true);
-            when(scraperService.verifyIfWebsiteIsValid(payload.assetType(), payload.assetName())).thenReturn(false);
+            when(assetService.getAssetTypeByAssetName(payload.assetName())).thenReturn(null);
 
             ResourceNotFoundException exception = assertThrows(ResourceNotFoundException.class, () -> walletService.addPurchaseToAsset(TOKEN, payload));
             assertEquals("O ativo informado não existe.", exception.getMessage());
@@ -180,7 +176,7 @@ class WalletServiceTest {
 
             when(tokenService.extractUserIdFromToken(anyString())).thenReturn(USER_ID);
             when(walletRepository.existsByUserId(USER_ID)).thenReturn(true);
-            when(scraperService.verifyIfWebsiteIsValid(payload.assetType(), payload.assetName())).thenReturn(true);
+            when(assetService.getAssetTypeByAssetName(payload.assetName())).thenReturn(ASSET_TYPE);
             when(walletRepository.findByUserId(USER_ID)).thenReturn(Optional.empty());
 
             ResourceNotFoundException exception = assertThrows(ResourceNotFoundException.class, () -> walletService.addPurchaseToAsset(TOKEN, payload));
@@ -195,7 +191,7 @@ class WalletServiceTest {
 
             when(tokenService.extractUserIdFromToken(anyString())).thenReturn(USER_ID);
             when(walletRepository.existsByUserId(USER_ID)).thenReturn(true);
-            when(scraperService.verifyIfWebsiteIsValid(payload.assetType(), payload.assetName())).thenReturn(true);
+            when(assetService.getAssetTypeByAssetName(payload.assetName())).thenReturn(ASSET_TYPE);
             when(walletRepository.findByUserId(USER_ID)).thenReturn(Optional.of(new WalletEntity()));
 
             ForbiddenException exception = assertThrows(ForbiddenException.class, () -> walletService.addPurchaseToAsset(TOKEN, payload));
@@ -207,7 +203,6 @@ class WalletServiceTest {
 
             return new AddPurchaseRequestDto(
                     ASSET_NAME,
-                    ASSET_TYPE,
                     10,
                     BigDecimal.valueOf(25.20),
                     Instant.parse(dateTimeString)
@@ -242,11 +237,11 @@ class WalletServiceTest {
 
             Map<String, WalletEntity.Asset> assetMap = new HashMap<>();
             assetMap.put(ASSET_NAME, asset);
-            wallet.setAsset(assetMap);
+            wallet.setAssets(assetMap);
 
             when(tokenService.extractUserIdFromToken(anyString())).thenReturn(USER_ID);
             when(walletRepository.existsByUserId(USER_ID)).thenReturn(true);
-            when(scraperService.verifyIfWebsiteIsValid(ASSET_TYPE, ASSET_NAME)).thenReturn(true);
+            when(assetService.getAssetTypeByAssetName(ASSET_NAME)).thenReturn(ASSET_TYPE);
             when(walletRepository.findByUserId(USER_ID)).thenReturn(Optional.of(wallet));
 
             doAnswer(invocationOnMock -> {
@@ -267,7 +262,6 @@ class WalletServiceTest {
 
             String result = walletService.updatePurchaseToAssetByPurchaseId(
                     TOKEN,
-                    ASSET_TYPE,
                     ASSET_NAME,
                     purchase.getPurchaseId(),
                     payload
@@ -310,16 +304,15 @@ class WalletServiceTest {
 
             Map<String, WalletEntity.Asset> assetMap = new HashMap<>();
             assetMap.put(ASSET_NAME, asset);
-            wallet.setAsset(assetMap);
+            wallet.setAssets(assetMap);
 
             when(tokenService.extractUserIdFromToken(anyString())).thenReturn(USER_ID);
             when(walletRepository.existsByUserId(USER_ID)).thenReturn(true);
-            when(scraperService.verifyIfWebsiteIsValid(ASSET_TYPE, ASSET_NAME)).thenReturn(true);
+            when(assetService.getAssetTypeByAssetName(ASSET_NAME)).thenReturn(ASSET_TYPE);
             when(walletRepository.findByUserId(USER_ID)).thenReturn(Optional.of(wallet));
 
             String result = walletService.updatePurchaseToAssetByPurchaseId(
                     TOKEN,
-                    ASSET_TYPE,
                     ASSET_NAME,
                     purchase.getPurchaseId(),
                     payload
@@ -363,16 +356,15 @@ class WalletServiceTest {
 
             Map<String, WalletEntity.Asset> assetMap = new HashMap<>();
             assetMap.put(ASSET_NAME, asset);
-            wallet.setAsset(assetMap);
+            wallet.setAssets(assetMap);
 
             when(tokenService.extractUserIdFromToken(anyString())).thenReturn(USER_ID);
             when(walletRepository.existsByUserId(USER_ID)).thenReturn(true);
-            when(scraperService.verifyIfWebsiteIsValid(ASSET_TYPE, ASSET_NAME)).thenReturn(true);
+            when(assetService.getAssetTypeByAssetName(ASSET_NAME)).thenReturn(ASSET_TYPE);
             when(walletRepository.findByUserId(USER_ID)).thenReturn(Optional.of(wallet));
 
             String result = walletService.updatePurchaseToAssetByPurchaseId(
                     TOKEN,
-                    ASSET_TYPE,
                     ASSET_NAME,
                     purchase.getPurchaseId(),
                     payload
@@ -416,11 +408,11 @@ class WalletServiceTest {
 
             Map<String, WalletEntity.Asset> assetMap = new HashMap<>();
             assetMap.put(ASSET_NAME, asset);
-            wallet.setAsset(assetMap);
+            wallet.setAssets(assetMap);
 
             when(tokenService.extractUserIdFromToken(anyString())).thenReturn(USER_ID);
             when(walletRepository.existsByUserId(USER_ID)).thenReturn(true);
-            when(scraperService.verifyIfWebsiteIsValid(ASSET_TYPE, ASSET_NAME)).thenReturn(true);
+            when(assetService.getAssetTypeByAssetName(ASSET_NAME)).thenReturn(ASSET_TYPE);
             when(walletRepository.findByUserId(USER_ID)).thenReturn(Optional.of(wallet));
 
             doAnswer(invocationOnMock -> {
@@ -441,7 +433,6 @@ class WalletServiceTest {
 
             String result = walletService.updatePurchaseToAssetByPurchaseId(
                     TOKEN,
-                    ASSET_TYPE,
                     ASSET_NAME,
                     purchase.getPurchaseId(),
                     payload
@@ -485,16 +476,15 @@ class WalletServiceTest {
 
             Map<String, WalletEntity.Asset> assetMap = new HashMap<>();
             assetMap.put(ASSET_NAME, asset);
-            wallet.setAsset(assetMap);
+            wallet.setAssets(assetMap);
 
             when(tokenService.extractUserIdFromToken(anyString())).thenReturn(USER_ID);
             when(walletRepository.existsByUserId(USER_ID)).thenReturn(true);
-            when(scraperService.verifyIfWebsiteIsValid(ASSET_TYPE, ASSET_NAME)).thenReturn(true);
+            when(assetService.getAssetTypeByAssetName(ASSET_NAME)).thenReturn(ASSET_TYPE);
             when(walletRepository.findByUserId(USER_ID)).thenReturn(Optional.of(wallet));
 
             String result = walletService.updatePurchaseToAssetByPurchaseId(
                     TOKEN,
-                    ASSET_TYPE,
                     ASSET_NAME,
                     purchase.getPurchaseId(),
                     payload
@@ -517,7 +507,7 @@ class WalletServiceTest {
             UpdatePurchaseRequestDto payload = new UpdatePurchaseRequestDto(null, null, null);
 
             BadRequestException exception = assertThrows(BadRequestException.class, () -> walletService.updatePurchaseToAssetByPurchaseId(
-                    TOKEN, ASSET_TYPE, ASSET_NAME, UUID.randomUUID().toString(), payload
+                    TOKEN, ASSET_NAME, UUID.randomUUID().toString(), payload
             ));
             assertEquals("Não há informações de compra para serem atualizadas.", exception.getMessage());
         }
@@ -544,15 +534,15 @@ class WalletServiceTest {
 
             WalletEntity wallet = new WalletEntity();
             wallet.setUserId(USER_ID);
-            wallet.setAsset(assetMap);
+            wallet.setAssets(assetMap);
 
             when(tokenService.extractUserIdFromToken(anyString())).thenReturn(USER_ID);
             when(walletRepository.existsByUserId(USER_ID)).thenReturn(true);
-            when(scraperService.verifyIfWebsiteIsValid(ASSET_TYPE, ASSET_NAME)).thenReturn(true);
+            when(assetService.getAssetTypeByAssetName(ASSET_NAME)).thenReturn(ASSET_TYPE);
             when(walletRepository.findByUserId(USER_ID)).thenReturn(Optional.of(wallet));
 
             ResourceNotFoundException exception = assertThrows(ResourceNotFoundException.class, () -> walletService.updatePurchaseToAssetByPurchaseId(
-                    TOKEN, ASSET_TYPE, ASSET_NAME, UUID.randomUUID().toString(), payload
+                    TOKEN, ASSET_NAME, UUID.randomUUID().toString(), payload
             ));
             assertEquals("Não existe compra com o ID informado.", exception.getMessage());
         }
@@ -567,7 +557,7 @@ class WalletServiceTest {
             when(walletRepository.existsByUserId(USER_ID)).thenReturn(false);
 
             ResourceNotFoundException exception = assertThrows(ResourceNotFoundException.class, () -> walletService.updatePurchaseToAssetByPurchaseId(
-                    TOKEN, ASSET_TYPE, ASSET_NAME, UUID.randomUUID().toString(), payload
+                    TOKEN, ASSET_NAME, UUID.randomUUID().toString(), payload
             ));
             assertEquals("Nenhuma carteira foi localizada para esse usuário.", exception.getMessage());
         }
@@ -580,10 +570,10 @@ class WalletServiceTest {
 
             when(tokenService.extractUserIdFromToken(anyString())).thenReturn(USER_ID);
             when(walletRepository.existsByUserId(USER_ID)).thenReturn(true);
-            when(scraperService.verifyIfWebsiteIsValid(ASSET_TYPE, ASSET_NAME)).thenReturn(false);
+            when(assetService.getAssetTypeByAssetName(ASSET_NAME)).thenReturn(null);
 
             ResourceNotFoundException exception = assertThrows(ResourceNotFoundException.class, () -> walletService.updatePurchaseToAssetByPurchaseId(
-                    TOKEN, ASSET_TYPE, ASSET_NAME, UUID.randomUUID().toString(), payload
+                    TOKEN, ASSET_NAME, UUID.randomUUID().toString(), payload
             ));
             assertEquals("O ativo informado não existe.", exception.getMessage());
         }
@@ -596,11 +586,11 @@ class WalletServiceTest {
 
             when(tokenService.extractUserIdFromToken(anyString())).thenReturn(USER_ID);
             when(walletRepository.existsByUserId(USER_ID)).thenReturn(true);
-            when(scraperService.verifyIfWebsiteIsValid(ASSET_TYPE, ASSET_NAME)).thenReturn(true);
+            when(assetService.getAssetTypeByAssetName(ASSET_NAME)).thenReturn(ASSET_TYPE);
             when(walletRepository.findByUserId(USER_ID)).thenReturn(Optional.empty());
 
             ResourceNotFoundException exception = assertThrows(ResourceNotFoundException.class,  () -> walletService.updatePurchaseToAssetByPurchaseId(
-                    TOKEN, ASSET_TYPE, ASSET_NAME, UUID.randomUUID().toString(), payload
+                    TOKEN, ASSET_NAME, UUID.randomUUID().toString(), payload
             ));
             assertEquals("Carteira não encontrada para o usuário informado.", exception.getMessage());
         }
@@ -613,11 +603,11 @@ class WalletServiceTest {
 
             when(tokenService.extractUserIdFromToken(anyString())).thenReturn(USER_ID);
             when(walletRepository.existsByUserId(USER_ID)).thenReturn(true);
-            when(scraperService.verifyIfWebsiteIsValid(ASSET_TYPE, ASSET_NAME)).thenReturn(true);
+            when(assetService.getAssetTypeByAssetName(ASSET_NAME)).thenReturn(ASSET_TYPE);
             when(walletRepository.findByUserId(USER_ID)).thenReturn(Optional.of(new WalletEntity()));
 
             ForbiddenException exception = assertThrows(ForbiddenException.class, () -> walletService.updatePurchaseToAssetByPurchaseId(
-                    TOKEN, ASSET_TYPE, ASSET_NAME, UUID.randomUUID().toString(), payload
+                    TOKEN, ASSET_NAME, UUID.randomUUID().toString(), payload
             ));
             assertEquals("O ativo informado não existe na carteira.", exception.getMessage());
         }
@@ -658,11 +648,11 @@ class WalletServiceTest {
 
             Map<String, WalletEntity.Asset> assetMap = new HashMap<>();
             assetMap.put(ASSET_NAME, asset);
-            wallet.setAsset(assetMap);
+            wallet.setAssets(assetMap);
 
             when(tokenService.extractUserIdFromToken(anyString())).thenReturn(USER_ID);
             when(walletRepository.existsByUserId(USER_ID)).thenReturn(true);
-            when(scraperService.verifyIfWebsiteIsValid(ASSET_TYPE, ASSET_NAME)).thenReturn(true);
+            when(assetService.getAssetTypeByAssetName(ASSET_NAME)).thenReturn(ASSET_TYPE);
             when(walletRepository.findByUserId(USER_ID)).thenReturn(Optional.of(wallet));
 
             doAnswer(invocationOnMock -> {
@@ -683,7 +673,6 @@ class WalletServiceTest {
 
             String result = walletService.updateSaleToAssetBySaleId(
                     TOKEN,
-                    ASSET_TYPE,
                     ASSET_NAME,
                     sale.getSaleId(),
                     payload
@@ -726,16 +715,15 @@ class WalletServiceTest {
 
             Map<String, WalletEntity.Asset> assetMap = new HashMap<>();
             assetMap.put(ASSET_NAME, asset);
-            wallet.setAsset(assetMap);
+            wallet.setAssets(assetMap);
 
             when(tokenService.extractUserIdFromToken(anyString())).thenReturn(USER_ID);
             when(walletRepository.existsByUserId(USER_ID)).thenReturn(true);
-            when(scraperService.verifyIfWebsiteIsValid(ASSET_TYPE, ASSET_NAME)).thenReturn(true);
+            when(assetService.getAssetTypeByAssetName(ASSET_NAME)).thenReturn(ASSET_TYPE);
             when(walletRepository.findByUserId(USER_ID)).thenReturn(Optional.of(wallet));
 
             String result = walletService.updateSaleToAssetBySaleId(
                     TOKEN,
-                    ASSET_TYPE,
                     ASSET_NAME,
                     sale.getSaleId(),
                     payload
@@ -779,16 +767,15 @@ class WalletServiceTest {
 
             Map<String, WalletEntity.Asset> assetMap = new HashMap<>();
             assetMap.put(ASSET_NAME, asset);
-            wallet.setAsset(assetMap);
+            wallet.setAssets(assetMap);
 
             when(tokenService.extractUserIdFromToken(anyString())).thenReturn(USER_ID);
             when(walletRepository.existsByUserId(USER_ID)).thenReturn(true);
-            when(scraperService.verifyIfWebsiteIsValid(ASSET_TYPE, ASSET_NAME)).thenReturn(true);
+            when(assetService.getAssetTypeByAssetName(ASSET_NAME)).thenReturn(ASSET_TYPE);
             when(walletRepository.findByUserId(USER_ID)).thenReturn(Optional.of(wallet));
 
             String result = walletService.updateSaleToAssetBySaleId(
                     TOKEN,
-                    ASSET_TYPE,
                     ASSET_NAME,
                     sale.getSaleId(),
                     payload
@@ -832,11 +819,11 @@ class WalletServiceTest {
 
             Map<String, WalletEntity.Asset> assetMap = new HashMap<>();
             assetMap.put(ASSET_NAME, asset);
-            wallet.setAsset(assetMap);
+            wallet.setAssets(assetMap);
 
             when(tokenService.extractUserIdFromToken(anyString())).thenReturn(USER_ID);
             when(walletRepository.existsByUserId(USER_ID)).thenReturn(true);
-            when(scraperService.verifyIfWebsiteIsValid(ASSET_TYPE, ASSET_NAME)).thenReturn(true);
+            when(assetService.getAssetTypeByAssetName(ASSET_NAME)).thenReturn(ASSET_TYPE);
             when(walletRepository.findByUserId(USER_ID)).thenReturn(Optional.of(wallet));
 
             doAnswer(invocationOnMock -> {
@@ -857,7 +844,6 @@ class WalletServiceTest {
 
             String result = walletService.updateSaleToAssetBySaleId(
                     TOKEN,
-                    ASSET_TYPE,
                     ASSET_NAME,
                     sale.getSaleId(),
                     payload
@@ -901,16 +887,15 @@ class WalletServiceTest {
 
             Map<String, WalletEntity.Asset> assetMap = new HashMap<>();
             assetMap.put(ASSET_NAME, asset);
-            wallet.setAsset(assetMap);
+            wallet.setAssets(assetMap);
 
             when(tokenService.extractUserIdFromToken(anyString())).thenReturn(USER_ID);
             when(walletRepository.existsByUserId(USER_ID)).thenReturn(true);
-            when(scraperService.verifyIfWebsiteIsValid(ASSET_TYPE, ASSET_NAME)).thenReturn(true);
+            when(assetService.getAssetTypeByAssetName(ASSET_NAME)).thenReturn(ASSET_TYPE);
             when(walletRepository.findByUserId(USER_ID)).thenReturn(Optional.of(wallet));
 
             String result = walletService.updateSaleToAssetBySaleId(
                     TOKEN,
-                    ASSET_TYPE,
                     ASSET_NAME,
                     sale.getSaleId(),
                     payload
@@ -933,7 +918,7 @@ class WalletServiceTest {
             UpdateSaleRequestDto payload = new UpdateSaleRequestDto(null, null, null);
 
             BadRequestException exception = assertThrows(BadRequestException.class, () -> walletService.updateSaleToAssetBySaleId(
-                    TOKEN, ASSET_TYPE, ASSET_NAME, UUID.randomUUID().toString(), payload
+                    TOKEN, ASSET_NAME, UUID.randomUUID().toString(), payload
             ));
             assertEquals("Não há informações de venda para serem atualizadas.", exception.getMessage());
         }
@@ -960,15 +945,15 @@ class WalletServiceTest {
 
             WalletEntity wallet = new WalletEntity();
             wallet.setUserId(USER_ID);
-            wallet.setAsset(assetMap);
+            wallet.setAssets(assetMap);
 
             when(tokenService.extractUserIdFromToken(anyString())).thenReturn(USER_ID);
             when(walletRepository.existsByUserId(USER_ID)).thenReturn(true);
-            when(scraperService.verifyIfWebsiteIsValid(ASSET_TYPE, ASSET_NAME)).thenReturn(true);
+            when(assetService.getAssetTypeByAssetName(ASSET_NAME)).thenReturn(ASSET_TYPE);
             when(walletRepository.findByUserId(USER_ID)).thenReturn(Optional.of(wallet));
 
             ResourceNotFoundException exception = assertThrows(ResourceNotFoundException.class, () -> walletService.updateSaleToAssetBySaleId(
-                    TOKEN, ASSET_TYPE, ASSET_NAME, UUID.randomUUID().toString(), payload
+                    TOKEN, ASSET_NAME, UUID.randomUUID().toString(), payload
             ));
             assertEquals("Não existe venda com o ID informado.", exception.getMessage());
         }
@@ -983,7 +968,7 @@ class WalletServiceTest {
             when(walletRepository.existsByUserId(USER_ID)).thenReturn(false);
 
             ResourceNotFoundException exception = assertThrows(ResourceNotFoundException.class, () -> walletService.updateSaleToAssetBySaleId(
-                    TOKEN, ASSET_TYPE, ASSET_NAME, UUID.randomUUID().toString(), payload
+                    TOKEN, ASSET_NAME, UUID.randomUUID().toString(), payload
             ));
             assertEquals("Nenhuma carteira foi localizada para esse usuário.", exception.getMessage());
         }
@@ -996,10 +981,10 @@ class WalletServiceTest {
 
             when(tokenService.extractUserIdFromToken(anyString())).thenReturn(USER_ID);
             when(walletRepository.existsByUserId(USER_ID)).thenReturn(true);
-            when(scraperService.verifyIfWebsiteIsValid(ASSET_TYPE, ASSET_NAME)).thenReturn(false);
+            when(assetService.getAssetTypeByAssetName(ASSET_NAME)).thenReturn(null);
 
             ResourceNotFoundException exception = assertThrows(ResourceNotFoundException.class, () -> walletService.updateSaleToAssetBySaleId(
-                    TOKEN, ASSET_TYPE, ASSET_NAME, UUID.randomUUID().toString(), payload
+                    TOKEN, ASSET_NAME, UUID.randomUUID().toString(), payload
             ));
             assertEquals("O ativo informado não existe.", exception.getMessage());
         }
@@ -1012,11 +997,11 @@ class WalletServiceTest {
 
             when(tokenService.extractUserIdFromToken(anyString())).thenReturn(USER_ID);
             when(walletRepository.existsByUserId(USER_ID)).thenReturn(true);
-            when(scraperService.verifyIfWebsiteIsValid(ASSET_TYPE, ASSET_NAME)).thenReturn(true);
+            when(assetService.getAssetTypeByAssetName(ASSET_NAME)).thenReturn(ASSET_TYPE);
             when(walletRepository.findByUserId(USER_ID)).thenReturn(Optional.empty());
 
             ResourceNotFoundException exception = assertThrows(ResourceNotFoundException.class,  () -> walletService.updateSaleToAssetBySaleId(
-                    TOKEN, ASSET_TYPE, ASSET_NAME, UUID.randomUUID().toString(), payload
+                    TOKEN, ASSET_NAME, UUID.randomUUID().toString(), payload
             ));
             assertEquals("Carteira não encontrada para o usuário informado.", exception.getMessage());
         }
@@ -1029,11 +1014,11 @@ class WalletServiceTest {
 
             when(tokenService.extractUserIdFromToken(anyString())).thenReturn(USER_ID);
             when(walletRepository.existsByUserId(USER_ID)).thenReturn(true);
-            when(scraperService.verifyIfWebsiteIsValid(ASSET_TYPE, ASSET_NAME)).thenReturn(true);
+            when(assetService.getAssetTypeByAssetName(ASSET_NAME)).thenReturn(ASSET_TYPE);
             when(walletRepository.findByUserId(USER_ID)).thenReturn(Optional.of(new WalletEntity()));
 
             ForbiddenException exception = assertThrows(ForbiddenException.class, () -> walletService.updateSaleToAssetBySaleId(
-                    TOKEN, ASSET_TYPE, ASSET_NAME, UUID.randomUUID().toString(), payload
+                    TOKEN, ASSET_NAME, UUID.randomUUID().toString(), payload
             ));
             assertEquals("O ativo informado não existe na carteira.", exception.getMessage());
         }
@@ -1046,6 +1031,58 @@ class WalletServiceTest {
             );
         }
     }
+
+//    @Nested
+//    class removePurchaseToAssetByPurchaseId {
+//
+//        @Test
+//        @DisplayName("Should be able to remove asset's purchase by purchaseId")
+//        void shouldBeAbleToRemovePurchaseToAssetByPurchaseId() {
+//
+//            String purchaseId = "purchase-id";
+//            WalletEntity wallet = new WalletEntity();
+//            WalletEntity.Asset asset = new WalletEntity.Asset();
+//            List<WalletEntity.Asset.PurchasesInfo> purchaseInfo = new ArrayList<>();
+//
+//            WalletEntity.Asset.PurchasesInfo purchase = new WalletEntity.Asset.PurchasesInfo(
+//                    purchaseId,
+//                    10,
+//                    BigDecimal.valueOf(10.00),
+//                    Instant.now()
+//            );
+//
+//            purchaseInfo.add(purchase);
+//            asset.setAssetName(ASSET_NAME);
+//            asset.setQuotaAmount(20);
+//            asset.setPurchasesInfo(purchaseInfo);
+//
+//            Map<String, WalletEntity.Asset> assetMap = new HashMap<>();
+//            assetMap.put(ASSET_NAME, asset);
+//            wallet.setAssets(assetMap);
+//
+//            when(tokenService.extractUserIdFromToken(anyString())).thenReturn(USER_ID);
+//            when(walletRepository.existsByUserId(USER_ID)).thenReturn(true);
+//            when(assetService.getAssetTypeByAssetName(ASSET_NAME)).thenReturn(ASSET_TYPE);
+//            when(walletRepository.findByUserId(USER_ID)).thenReturn(Optional.of(wallet));
+//
+//            String result = walletService.removePurchaseToAssetByPurchaseId(
+//                    TOKEN,
+//                    ASSET_NAME,
+//                    purchaseId
+//            );
+//
+//            String message = "A compra " + purchaseId + " do ativo " + ASSET_NAME + " foi removida com sucesso." ;
+//
+//            ArgumentCaptor<List<WalletEntity.Asset.PurchasesInfo>> purchaseListCaptor = ArgumentCaptor.forClass(List.class);
+//
+//            verify(walletRepository, times(1)).updatePurchaseInAssetByPurchaseId(
+//                    eq(USER_ID), eq(ASSET_NAME), purchaseListCaptor.capture(), eq(10)
+//            );
+//
+//            // assertEquals(15, asset.getQuotaAmount());
+//            assertEquals(message, result);
+//        }
+//    }
 
     @Nested
     class addSaleToAsset {
@@ -1060,11 +1097,11 @@ class WalletServiceTest {
             WalletEntity.Asset asset = new WalletEntity.Asset();
             asset.setAssetName(payload.assetName());
             asset.setQuotaAmount(100);
-            wallet.getAsset().put(asset.getAssetName(), asset);
+            wallet.getAssets().put(asset.getAssetName(), asset);
 
             when(tokenService.extractUserIdFromToken(anyString())).thenReturn(USER_ID);
             when(walletRepository.existsByUserId(USER_ID)).thenReturn(true);
-            when(scraperService.verifyIfWebsiteIsValid(payload.assetType(), payload.assetName())).thenReturn(true);
+            when(assetService.getAssetTypeByAssetName(ASSET_NAME)).thenReturn(ASSET_TYPE);
             when(walletRepository.findByUserId(USER_ID)).thenReturn(Optional.of(wallet));
 
             String result = walletService.addSaleToAsset(TOKEN, payload);
@@ -1085,7 +1122,7 @@ class WalletServiceTest {
 
             when(tokenService.extractUserIdFromToken(anyString())).thenReturn(USER_ID);
             when(walletRepository.existsByUserId(USER_ID)).thenReturn(true);
-            when(scraperService.verifyIfWebsiteIsValid(payload.assetType(), payload.assetName())).thenReturn(false);
+            when(assetService.getAssetTypeByAssetName(ASSET_NAME)).thenReturn(null);
 
             ResourceNotFoundException exception = assertThrows(ResourceNotFoundException.class, () -> walletService.addSaleToAsset(TOKEN, payload));
             assertEquals("O ativo informado não existe.", exception.getMessage());
@@ -1099,7 +1136,7 @@ class WalletServiceTest {
 
             when(tokenService.extractUserIdFromToken(anyString())).thenReturn(USER_ID);
             when(walletRepository.existsByUserId(USER_ID)).thenReturn(true);
-            when(scraperService.verifyIfWebsiteIsValid(payload.assetType(), payload.assetName())).thenReturn(true);
+            when(assetService.getAssetTypeByAssetName(ASSET_NAME)).thenReturn(ASSET_TYPE);
             when(walletRepository.findByUserId(USER_ID)).thenReturn(Optional.empty());
 
             ResourceNotFoundException exception = assertThrows(ResourceNotFoundException.class, () -> walletService.addSaleToAsset(TOKEN, payload));
@@ -1114,7 +1151,7 @@ class WalletServiceTest {
 
             when(tokenService.extractUserIdFromToken(anyString())).thenReturn(USER_ID);
             when(walletRepository.existsByUserId(USER_ID)).thenReturn(true);
-            when(scraperService.verifyIfWebsiteIsValid(payload.assetType(), payload.assetName())).thenReturn(true);
+            when(assetService.getAssetTypeByAssetName(ASSET_NAME)).thenReturn(ASSET_TYPE);
             when(walletRepository.findByUserId(USER_ID)).thenReturn(Optional.of(new WalletEntity()));
 
             ForbiddenException exception = assertThrows(ForbiddenException.class, () -> walletService.addSaleToAsset(TOKEN, payload));
@@ -1130,11 +1167,11 @@ class WalletServiceTest {
             WalletEntity.Asset asset = new WalletEntity.Asset(ASSET_NAME, 5, new ArrayList<>(), new ArrayList<>());
             WalletEntity wallet = new WalletEntity();
             wallet.setUserId(USER_ID);
-            wallet.getAsset().put(asset.getAssetName(), asset);
+            wallet.getAssets().put(asset.getAssetName(), asset);
 
             when(tokenService.extractUserIdFromToken(anyString())).thenReturn(USER_ID);
             when(walletRepository.existsByUserId(USER_ID)).thenReturn(true);
-            when(scraperService.verifyIfWebsiteIsValid(payload.assetType(), payload.assetName())).thenReturn(true);
+            when(assetService.getAssetTypeByAssetName(ASSET_NAME)).thenReturn(ASSET_TYPE);
             when(walletRepository.findByUserId(USER_ID)).thenReturn(Optional.of(wallet));
 
             BadRequestException exception = assertThrows(BadRequestException.class, () -> walletService.addSaleToAsset(TOKEN, payload));
@@ -1146,7 +1183,6 @@ class WalletServiceTest {
 
             return new AddSaleRequestDto(
                     ASSET_NAME,
-                    ASSET_TYPE,
                     10,
                     BigDecimal.valueOf(25.20),
                     Instant.parse(dateTimeString)
