@@ -3,6 +3,7 @@ package personal.investwallet.modules.wallet;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import personal.investwallet.exceptions.*;
+import personal.investwallet.modules.asset.AssetService;
 import personal.investwallet.modules.user.UserRepository;
 import personal.investwallet.modules.wallet.dto.*;
 import personal.investwallet.modules.webscraper.ScraperService;
@@ -29,7 +30,7 @@ public class WalletService {
     private WalletRepository walletRepository;
 
     @Autowired
-    private ScraperService scraperService;
+    private AssetService assetService;
 
     public List<Object> getAllAssets(String token) {
 
@@ -38,7 +39,7 @@ public class WalletService {
         WalletEntity wallet = walletRepository.findByUserId(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("Nenhuma carteira foi localizada para esse usuário."));;
 
-        return wallet.getAsset().values().stream()
+        return wallet.getAssets().values().stream()
                 .map(asset -> Map.of(
                         "assetName", asset.getAssetName(),
                         "assetQuotaAmount", asset.getQuotaAmount()
@@ -53,7 +54,7 @@ public class WalletService {
         WalletEntity wallet = walletRepository.findByUserId(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("Nenhuma carteira foi localizada para esse usuário."));;
 
-        Asset asset = wallet.getAsset().get(assetName);
+        Asset asset = wallet.getAssets().get(assetName);
 
         return new GetQuotaAmountResponseDto(asset.getQuotaAmount());
     }
@@ -61,45 +62,46 @@ public class WalletService {
     public String addAssetToWallet(String token, CreateAssetRequestDto payload) {
 
         String userId = tokenService.extractUserIdFromToken(token);
+        String assetType = verifyAssetNameExists(payload.assetName());
 
-        boolean isAssetExists = verifyAssetNameExists(payload.assetType(), payload.assetName());
-
-        if (!isAssetExists)
+        if (assetType == null)
             throw new ResourceNotFoundException("O ativo informado não existe.");
 
         Optional<WalletEntity> wallet = walletRepository.findByUserId(userId);
 
         Asset newAsset = new Asset(
                 payload.assetName(),
-                payload.quotaAmount(),
+                0,
                 new ArrayList<>(),
                 new ArrayList<>()
         );
 
         if (wallet.isPresent()) {
 
-            if (wallet.get().getAsset().containsKey(payload.assetName()))
+            if (wallet.get().getAssets().containsKey(payload.assetName()))
                 throw new ConflictException("O ativo informado já existe na carteira.");
 
             walletRepository.addNewAssetByUserId(userId, newAsset.getAssetName(), newAsset);
+
+            return "O ativo " + payload.assetName() + " foi adicionado à carteira com sucesso.";
 
         } else {
 
             WalletEntity newWallet = new WalletEntity();
             newWallet.setUserId(userId);
-            newWallet.getAsset().put(newAsset.getAssetName(), newAsset);
+            newWallet.getAssets().put(newAsset.getAssetName(), newAsset);
 
             walletRepository.save(newWallet);
-        }
 
-        return "Ativo adicionado à carteira com sucesso!";
+            return "Uma nova carteira foi criada e o ativo " + payload.assetName() + " foi adicionado.";
+        }
     }
 
     public String addPurchaseToAsset(String token, AddPurchaseRequestDto payload) {
 
         String userId = getUserId(token);
 
-        WalletEntity.Asset asset = getAssetVerified(payload.assetType(), payload.assetName(),userId);
+        WalletEntity.Asset asset = getAssetVerified(payload.assetName(),userId);
 
         PurchasesInfo newPurchase = new PurchasesInfo(
                 UUID.randomUUID().toString(),
@@ -115,7 +117,6 @@ public class WalletService {
 
     public String updatePurchaseToAssetByPurchaseId(
             String token,
-            String assetType,
             String assetName,
             String purchaseId,
             UpdatePurchaseRequestDto payload
@@ -126,7 +127,7 @@ public class WalletService {
 
         String userId = getUserId(token);
 
-        Asset asset = getAssetVerified(assetType, assetName,userId);
+        Asset asset = getAssetVerified(assetName,userId);
 
         Optional<PurchasesInfo> purchaseSelected = asset.getPurchasesInfo().stream()
                 .filter(purchase -> purchase.getPurchaseId().equals(purchaseId))
@@ -157,11 +158,11 @@ public class WalletService {
         return "A compra " + purchaseId + " do ativo " + assetName + " foi atualizada com sucesso.";
     }
 
-    public String removePurchaseToAssetByPurchaseId(String token, String assetType, String assetName, String purchaseId) {
+    public String removePurchaseToAssetByPurchaseId(String token, String assetName, String purchaseId) {
 
         String userId = getUserId(token);
 
-        Asset asset = getAssetVerified(assetType, assetName,userId);
+        Asset asset = getAssetVerified(assetName,userId);
 
         int purchaseAmount = - 1 * asset.getPurchasesInfo().stream()
                 .filter(purchase -> purchase.getPurchaseId().equals(purchaseId))
@@ -184,7 +185,7 @@ public class WalletService {
 
         String userId = getUserId(token);
 
-        Asset asset = getAssetVerified(payload.assetType(), payload.assetName(), userId);
+        Asset asset = getAssetVerified(payload.assetName(), userId);
 
         int saleAmount = payload.saleAmount() * -1;
 
@@ -205,7 +206,6 @@ public class WalletService {
 
     public String updateSaleToAssetBySaleId(
             String token,
-            String assetType,
             String assetName,
             String saleId,
             UpdateSaleRequestDto payload
@@ -216,7 +216,7 @@ public class WalletService {
 
         String userId = getUserId(token);
 
-        Asset asset = getAssetVerified(assetType, assetName,userId);
+        Asset asset = getAssetVerified(assetName,userId);
 
         Optional<SalesInfo> saleSelected = asset.getSalesInfo().stream()
                 .filter(sale -> sale.getSaleId().equals(saleId))
@@ -247,11 +247,11 @@ public class WalletService {
         return "A venda " + saleId + " do ativo " + assetName + " foi atualizada com sucesso.";
     }
 
-    public String removeSaleToAssetBySaleId(String token, String assetType, String assetName, String saleId) {
+    public String removeSaleToAssetBySaleId(String token, String assetName, String saleId) {
 
         String userId = getUserId(token);
 
-        Asset asset = getAssetVerified(assetType, assetName, userId);
+        Asset asset = getAssetVerified(assetName, userId);
 
         int saleAmount = asset.getSalesInfo().stream()
                 .filter(sale -> sale.getSaleId().equals(saleId))
@@ -281,21 +281,21 @@ public class WalletService {
         return userId;
     }
 
-    private boolean verifyAssetNameExists(String assetType, String assetName) {
-        return scraperService.verifyIfWebsiteIsValid(assetType, assetName);
+    private String verifyAssetNameExists(String assetName) {
+        return assetService.getAssetTypeByAssetName(assetName);
     }
 
-    private WalletEntity.Asset getAssetVerified(String assetType, String assetName, String userId) {
+    private WalletEntity.Asset getAssetVerified(String assetName, String userId) {
 
-        boolean isAssetExists = verifyAssetNameExists(assetType, assetName);
+        String assetType = verifyAssetNameExists(assetName);
 
-        if (!isAssetExists)
+        if (assetType == null)
             throw new ResourceNotFoundException("O ativo informado não existe.");
 
         WalletEntity wallet = walletRepository.findByUserId(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("Carteira não encontrada para o usuário informado."));
 
-        Asset asset = wallet.getAsset().get(assetName);
+        Asset asset = wallet.getAssets().get(assetName);
 
         if (asset == null)
             throw new ForbiddenException("O ativo informado não existe na carteira.");
