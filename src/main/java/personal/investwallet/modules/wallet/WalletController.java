@@ -75,7 +75,6 @@ public class WalletController {
     @PatchMapping("/{assetType}/{assetName}/purchases/{purchaseId}")
     public ResponseEntity<UpdateWalletResponseDto> updatePurchase(
             @CookieValue(value = "access_token") String token,
-            @PathVariable String assetType,
             @PathVariable String assetName,
             @PathVariable String purchaseId,
             @Valid @RequestBody UpdatePurchaseRequestDto payload
@@ -83,7 +82,6 @@ public class WalletController {
 
         String result = walletService.updatePurchaseToAssetByPurchaseId(
                 token,
-                assetType,
                 assetName,
                 purchaseId,
                 payload
@@ -95,7 +93,6 @@ public class WalletController {
     @PatchMapping("/{assetType}/{assetName}/sales/{saleId}")
     public ResponseEntity<UpdateWalletResponseDto> updateSale(
             @CookieValue(value = "access_token") String token,
-            @PathVariable String assetType,
             @PathVariable String assetName,
             @PathVariable String saleId,
             @Valid @RequestBody UpdateSaleRequestDto payload
@@ -103,7 +100,6 @@ public class WalletController {
 
         String result = walletService.updateSaleToAssetBySaleId(
                 token,
-                assetType,
                 assetName,
                 saleId,
                 payload
@@ -115,12 +111,11 @@ public class WalletController {
     @DeleteMapping("/{assetType}/{assetName}/purchases/{purchaseId}")
     public ResponseEntity<UpdateWalletResponseDto> removePurchase(
             @CookieValue(value = "access_token") String token,
-            @PathVariable String assetType,
             @PathVariable String assetName,
             @PathVariable String purchaseId
     ) {
 
-        String result = walletService.removePurchaseToAssetByPurchaseId(token, assetType, assetName, purchaseId);
+        String result = walletService.removePurchaseToAssetByPurchaseId(token, assetName, purchaseId);
 
         return ResponseEntity.ok(new UpdateWalletResponseDto(result));
     }
@@ -128,12 +123,11 @@ public class WalletController {
     @DeleteMapping("/{assetType}/{assetName}/sales/{saleId}")
     public ResponseEntity<UpdateWalletResponseDto> removeSale(
             @CookieValue(value = "access_token") String token,
-            @PathVariable String assetType,
             @PathVariable String assetName,
             @PathVariable String saleId
     ) {
 
-        String result = walletService.removeSaleToAssetBySaleId(token, assetType, assetName, saleId);
+        String result = walletService.removeSaleToAssetBySaleId(token, assetName, saleId);
 
         return ResponseEntity.ok(new UpdateWalletResponseDto(result));
     }
