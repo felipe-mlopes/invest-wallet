@@ -4,8 +4,8 @@ import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 import personal.investwallet.modules.wallet.dto.*;
-import personal.investwallet.modules.yield.YieldService;
 
 import java.util.List;
 
@@ -16,14 +16,12 @@ public class WalletController {
     @Autowired
     private WalletService walletService;
 
-    @Autowired
-    private YieldService yieldService;
-
     @GetMapping("/assets")
-    public ResponseEntity<List<Object>> getAllAssets(@CookieValue(value = "access_token") String token) {
+    public ResponseEntity<List<Object>> getAllAssets(
+            @CookieValue(value = "access_token") String token
+    ) {
 
         List<Object> assets = walletService.getAllAssets(token);
-        yieldService.registerAllYieldsReceivedInTheMonth(token, assets);
 
         return ResponseEntity.ok(assets);
     }
@@ -61,6 +59,17 @@ public class WalletController {
         return ResponseEntity.ok(new UpdateWalletResponseDto(result));
     }
 
+    @PostMapping("/purchases")
+    public ResponseEntity<String> addManyPurchasesByCSV(
+            @CookieValue(value = "access_token") String token,
+            MultipartFile file
+    ) {
+
+        String result = walletService.addAllPurchasesToAssetByFile(token, file);
+
+        return ResponseEntity.created(null).body(result);
+    }
+
     @PostMapping("/sale")
     public ResponseEntity<UpdateWalletResponseDto> addSale(
             @CookieValue(value = "access_token") String token,
@@ -70,6 +79,17 @@ public class WalletController {
         String result = walletService.addSaleToAsset(token, payload);
 
         return ResponseEntity.ok(new UpdateWalletResponseDto(result));
+    }
+
+    @PostMapping("/sales")
+    public ResponseEntity<String> addManySalesByCSV(
+            @CookieValue(value = "access_token") String token,
+            MultipartFile file
+    ) {
+
+        String result = walletService.addAllSalesToAssetByFile(token, file);
+
+        return ResponseEntity.created(null).body(result);
     }
 
     @PatchMapping("/{assetType}/{assetName}/purchases/{purchaseId}")
