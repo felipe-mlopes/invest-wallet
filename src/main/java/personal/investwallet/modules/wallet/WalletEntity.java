@@ -70,6 +70,9 @@ public class WalletEntity {
             @Field("purchase_price")
             private BigDecimal purchasePrice;
 
+            @Field("purchase_quota_value")
+            private BigDecimal purchaseQuotaValue;
+
             @Field("purchase_date")
             private Instant purchaseDate;
         }
@@ -88,6 +91,9 @@ public class WalletEntity {
 
             @Field("sale_price")
             private BigDecimal salePrice;
+
+            @Field("sale_quota_value")
+            private BigDecimal saleQuotaValue;
 
             @Field("sale_date")
             private Instant saleDate;
