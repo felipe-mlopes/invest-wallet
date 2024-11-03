@@ -1,7 +1,9 @@
 package personal.investwallet.security;
 
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.Collections;
+import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -15,6 +17,7 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import personal.investwallet.exceptions.ResourceNotFoundException;
+import personal.investwallet.exceptions.UnauthorizedException;
 import personal.investwallet.modules.user.UserEntity;
 import personal.investwallet.modules.user.UserRepository;
 
@@ -27,43 +30,56 @@ public class SecurityFilter extends OncePerRequestFilter {
     @Autowired
     UserRepository userRepository;
 
-    @Override
-    protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
-            throws ServletException, IOException {
+    private static final List<String> PUBLIC_URLS = Arrays.asList(
+            "/user/register",
+            "/user/validate",
+            "/user/revalidate",
+            "/user/login"
+    );
 
-        String requestURI = request.getRequestURI();
-        if (
-                "/user/register".equals(requestURI) ||
-                "/user/validate".equals(requestURI) ||
-                "/user/revalidate".equals(requestURI) ||
-                "/user/login".equals(requestURI)
-        ) {
+    @Override
+    protected void doFilterInternal(
+            HttpServletRequest request,
+            HttpServletResponse response,
+            FilterChain filterChain
+    ) throws ServletException, IOException {
+
+        if (isPublicUrl(request.getRequestURI())) {
             filterChain.doFilter(request, response);
             return;
         }
 
-        var token = this.recoverToken(request);
-        var login = tokenService.validateToken(token);
+        String token = recoverToken(request);
 
-        if (login != null) {
-            UserEntity user = userRepository.findById(login)
-                    .orElseThrow(() -> new ResourceNotFoundException("Usuário não encontrado."));
+        if (token == null)
+            throw new UnauthorizedException("Token não fornecido");
 
-            var authorities = Collections.singletonList(new SimpleGrantedAuthority("ROLE_USER"));
+        String userId = tokenService.validateToken(token);
 
-            var authentication = new UsernamePasswordAuthenticationToken(user, null, authorities);
-
-            SecurityContextHolder.getContext().setAuthentication(authentication);
-        }
+        if (userId != null)
+            authenticateUser(userId);
 
         filterChain.doFilter(request, response);
     }
 
-    private String recoverToken(HttpServletRequest request) {
+    private boolean isPublicUrl(String requestUri) {
+        return PUBLIC_URLS.contains(requestUri);
+    }
 
-        var authHeader = request.getHeader("Authorization");
-        if (authHeader == null)
+    private String recoverToken(HttpServletRequest request) {
+        String authHeader = request.getHeader("Authorization");
+        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
             return null;
-        return authHeader.replace("Bearer ", "");
+        }
+        return authHeader.substring(7);
+    }
+
+    private void authenticateUser(String userId) {
+        UserEntity user = userRepository.findById(userId)
+                .orElseThrow(() -> new UnauthorizedException("Usuário não encontrado"));
+
+        var authorities = Collections.singletonList(new SimpleGrantedAuthority("ROLE_USER"));
+        var authentication = new UsernamePasswordAuthenticationToken(user, null, authorities);
+        SecurityContextHolder.getContext().setAuthentication(authentication);
     }
 }
