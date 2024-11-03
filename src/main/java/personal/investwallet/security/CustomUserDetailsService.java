@@ -19,7 +19,7 @@ public class CustomUserDetailsService implements UserDetailsService {
 
     @Override
     public UserDetails loadUserByUsername(String username) throws ResourceNotFoundException {
-        UserEntity user = this.repository.findByEmail(username)
+        UserEntity user = repository.findByEmail(username)
                 .orElseThrow(() -> new ResourceNotFoundException("Usuário não encontrado."));
         return new org.springframework.security.core.userdetails.User(user.getEmail(), user.getPassword(),
                 new ArrayList<>());
