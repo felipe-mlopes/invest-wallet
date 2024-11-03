@@ -8,6 +8,8 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.mock.web.MockMultipartFile;
+import org.springframework.web.multipart.MultipartFile;
 import personal.investwallet.exceptions.BadRequestException;
 import personal.investwallet.exceptions.ConflictException;
 import personal.investwallet.exceptions.ResourceNotFoundException;
@@ -26,13 +28,6 @@ import static org.mockito.Mockito.*;
 @ExtendWith(MockitoExtension.class)
 class WalletServiceTest {
 
-    public static final String TOKEN = "validToken";
-    public static final String USER_ID = "user1234";
-    public static final String ASSET_NAME = "ABCD11";
-    public static final String ASSET_TYPE = "fundos-imobiliarios";
-    public static final String PURCHASE_ID = "purchase123";
-    public static final String SALE_ID = "sale123";
-
     @Mock
     private WalletRepository walletRepository;
 
@@ -44,6 +39,13 @@ class WalletServiceTest {
 
     @InjectMocks
     private WalletService walletService;
+
+    public static final String TOKEN = "validToken";
+    public static final String USER_ID = "user1234";
+    public static final String ASSET_NAME = "ABCD11";
+    public static final String ASSET_TYPE = "fundos-imobiliarios";
+    public static final String PURCHASE_ID = "purchase123";
+    public static final String SALE_ID = "sale123";
 
     @Nested
     class addAssetToWallet {
@@ -200,6 +202,154 @@ class WalletServiceTest {
                     BigDecimal.valueOf(25.20),
                     Instant.parse(dateTimeString)
             );
+        }
+    }
+
+    @Nested
+    class addAllPurchaseToAssetByFile {
+
+        @Test
+        @DisplayName("Should be able to create new wallet and add all purchases to asset by file")
+        void shouldBeAbleToCreateNewWalletAndAddAllPurchasesToAssetByFile() {
+
+            String csvContent = "asset_name,date,amount,price,quota_value\n" +
+                    "ABCD11,01/01/2024,100,28.50,28.50";
+
+            MultipartFile file = new MockMultipartFile(
+                    "file",
+                    "purchase.csv",
+                    "text/csv",
+                    csvContent.getBytes()
+            );
+
+            when(tokenService.extractUserIdFromToken(TOKEN)).thenReturn(USER_ID);
+            when(assetService.getAssetTypeByAssetName(ASSET_NAME)).thenReturn(ASSET_TYPE);
+            when(walletRepository.findByUserId(USER_ID)).thenReturn(Optional.empty());
+
+            ArgumentCaptor<WalletEntity> walletCaptor = ArgumentCaptor.forClass(WalletEntity.class);
+            when(walletRepository.save(any(WalletEntity.class))).thenAnswer(i -> i.getArguments()[0]);
+
+            String result = walletService.addAllPurchasesToAssetByFile(TOKEN, file);
+
+            verify(walletRepository).save(walletCaptor.capture());
+
+            WalletEntity savedWallet = walletCaptor.getValue();
+            WalletEntity.Asset savedAsset = savedWallet.getAssets().get(ASSET_NAME);
+
+            assertNotNull(savedAsset);
+            assertEquals(USER_ID, savedWallet.getUserId());
+            assertEquals(ASSET_NAME, savedAsset.getAssetName());
+            assertEquals(100, savedAsset.getQuotaAmount());
+            assertEquals(1, savedAsset.getPurchasesInfo().size());
+
+            WalletEntity.Asset.PurchasesInfo savedPurchase = savedAsset.getPurchasesInfo().get(0);
+            assertEquals(100, savedPurchase.getPurchaseAmount());
+            assertEquals(new BigDecimal(2850), savedPurchase.getPurchasePrice());
+            assertEquals(new BigDecimal(2850), savedPurchase.getPurchaseQuotaValue());
+
+            String message = "Uma carteira foi criada e os registros de vendas foram cadastrados com sucesso." ;
+
+            assertEquals(message, result);
+        }
+
+        @Test
+        @DisplayName("Should be able to add all purchases to asset by file in wallet already created")
+        void shouldBeAbleToAddAllPurchasesToAssetByFileInWalletAlreadyCreated() {
+
+            WalletEntity wallet = createWalletWithAssetAndSaleInfo();
+
+            MultipartFile file = getMultipartFile();
+
+            when(tokenService.extractUserIdFromToken(TOKEN)).thenReturn(USER_ID);
+            when(assetService.getAssetTypeByAssetName(ASSET_NAME)).thenReturn(ASSET_TYPE);
+            when(walletRepository.findByUserId(USER_ID)).thenReturn(Optional.of(wallet));
+
+            ArgumentCaptor<WalletEntity> walletCaptor = ArgumentCaptor.forClass(WalletEntity.class);
+            when(walletRepository.save(any(WalletEntity.class))).thenAnswer(i -> i.getArguments()[0]);
+
+            String result = walletService.addAllPurchasesToAssetByFile(TOKEN, file);
+
+            verify(walletRepository).save(walletCaptor.capture());
+
+            WalletEntity savedWallet = walletCaptor.getValue();
+            WalletEntity.Asset savedAsset = savedWallet.getAssets().get(ASSET_NAME);
+
+            assertNotNull(savedAsset);
+            assertEquals(USER_ID, savedWallet.getUserId());
+            assertEquals(ASSET_NAME, savedAsset.getAssetName());
+            assertEquals(30, savedAsset.getQuotaAmount());
+            assertEquals(1, savedAsset.getPurchasesInfo().size());
+
+            WalletEntity.Asset.PurchasesInfo savedPurchase = savedAsset.getPurchasesInfo().get(0);
+            assertEquals(10, savedPurchase.getPurchaseAmount());
+            assertEquals(new BigDecimal(2850), savedPurchase.getPurchasePrice());
+            assertEquals(new BigDecimal(2850), savedPurchase.getPurchaseQuotaValue());
+
+            String message = "Os registros de compras foram cadastrados na carteira com sucesso." ;
+
+            assertEquals(message, result);
+        }
+
+        @Test
+        @DisplayName("Should be able to add all purchases to asset by file and skip duplicate purchase by date")
+        void shouldBeAbleToAddAllPurchasesToAssetByFileInWalletAndSkipDuplicatePurchaseByDate() {
+
+            WalletEntity wallet = createWalletWithAssetAndSaleInfo();
+
+            String csvContent = "asset_name,date,amount,price,quota_value\n" +
+                    "ABCD11,01/01/2024,100,2850,2850\n" +
+                    "ABCD11,01/01/2024,200,2950,2950";
+
+            MultipartFile file = new MockMultipartFile(
+                    "file",
+                    "purchases.csv",
+                    "text/csv",
+                    csvContent.getBytes()
+            );
+
+            when(tokenService.extractUserIdFromToken(TOKEN)).thenReturn(USER_ID);
+            when(assetService.getAssetTypeByAssetName(ASSET_NAME)).thenReturn(ASSET_TYPE);
+            when(walletRepository.findByUserId(USER_ID)).thenReturn(Optional.of(wallet));
+
+            ArgumentCaptor<WalletEntity> walletCaptor = ArgumentCaptor.forClass(WalletEntity.class);
+            when(walletRepository.save(any(WalletEntity.class))).thenAnswer(i -> i.getArguments()[0]);
+
+            String result = walletService.addAllPurchasesToAssetByFile(TOKEN, file);
+
+            verify(walletRepository).save(walletCaptor.capture());
+
+            WalletEntity savedWallet = walletCaptor.getValue();
+            WalletEntity.Asset savedAsset = savedWallet.getAssets().get(ASSET_NAME);
+
+            assertNotNull(savedAsset);
+            assertEquals(USER_ID, savedWallet.getUserId());
+            assertEquals(ASSET_NAME, savedAsset.getAssetName());
+            assertEquals(120, savedAsset.getQuotaAmount());
+            assertEquals(1, savedAsset.getPurchasesInfo().size());
+
+            WalletEntity.Asset.PurchasesInfo savedPurchase = savedAsset.getPurchasesInfo().get(0);
+            assertEquals(100, savedPurchase.getPurchaseAmount());
+            assertEquals(new BigDecimal(2850), savedPurchase.getPurchasePrice());
+            assertEquals(new BigDecimal(2850), savedPurchase.getPurchaseQuotaValue());
+
+            String message = "Os registros de compras foram cadastrados na carteira com sucesso." ;
+
+            assertEquals(message, result);
+        }
+
+        @Test
+        @DisplayName("Should not be able to add all purchases to asset by file if asset does not exist")
+        void shouldNotBeAbleToAddAllPurchasesToAssetByFileIfAssetDoesNotExist() {
+
+            MultipartFile file = getMultipartFile();
+
+            when(tokenService.extractUserIdFromToken(TOKEN)).thenReturn(USER_ID);
+            when(assetService.getAssetTypeByAssetName(ASSET_NAME)).thenReturn(null);
+
+            ResourceNotFoundException exception = assertThrows(ResourceNotFoundException.class, () -> walletService.addAllPurchasesToAssetByFile(
+                    TOKEN, file
+            ));
+            assertEquals("O ativo " + ASSET_NAME + " informado não existe.", exception.getMessage());
         }
     }
 
@@ -760,6 +910,146 @@ class WalletServiceTest {
         }
 
 }
+
+    @Nested
+    class addAllSaleToAssetByFile {
+
+        @Test
+        @DisplayName("Should be able to create new wallet and add all sales to asset by file")
+        void shouldBeAbleToCreateNewWalletAndAddAllSalesToAssetByFile() {
+
+            MultipartFile file = getMultipartFile();
+
+            when(tokenService.extractUserIdFromToken(TOKEN)).thenReturn(USER_ID);
+            when(assetService.getAssetTypeByAssetName(ASSET_NAME)).thenReturn(ASSET_TYPE);
+            when(walletRepository.findByUserId(USER_ID)).thenReturn(Optional.empty());
+
+            ArgumentCaptor<WalletEntity> walletCaptor = ArgumentCaptor.forClass(WalletEntity.class);
+            when(walletRepository.save(any(WalletEntity.class))).thenAnswer(i -> i.getArguments()[0]);
+
+            String result = walletService.addAllSalesToAssetByFile(TOKEN, file);
+
+            verify(walletRepository).save(walletCaptor.capture());
+
+            WalletEntity savedWallet = walletCaptor.getValue();
+            WalletEntity.Asset savedAsset = savedWallet.getAssets().get(ASSET_NAME);
+
+            assertNotNull(savedAsset);
+            assertEquals(USER_ID, savedWallet.getUserId());
+            assertEquals(ASSET_NAME, savedAsset.getAssetName());
+            assertEquals(10, savedAsset.getQuotaAmount());
+            assertEquals(1, savedAsset.getSalesInfo().size());
+
+            WalletEntity.Asset.SalesInfo savedSale = savedAsset.getSalesInfo().get(0);
+            assertEquals(10, savedSale.getSaleAmount());
+            assertEquals(new BigDecimal(2850), savedSale.getSalePrice());
+            assertEquals(new BigDecimal(2850), savedSale.getSaleQuotaValue());
+
+            String message = "Uma carteira foi criada e os registros de vendas foram cadastrados com sucesso." ;
+
+            assertEquals(message, result);
+        }
+
+        @Test
+        @DisplayName("Should be able to add all sales to asset by file in wallet already created")
+        void shouldBeAbleToAddAllSalesToAssetByFileInWalletAlreadyCreated() {
+
+            WalletEntity wallet = createWalletWithAssetAndSaleInfo();
+
+            MultipartFile file = getMultipartFile();
+
+            when(tokenService.extractUserIdFromToken(TOKEN)).thenReturn(USER_ID);
+            when(assetService.getAssetTypeByAssetName(ASSET_NAME)).thenReturn(ASSET_TYPE);
+            when(walletRepository.findByUserId(USER_ID)).thenReturn(Optional.of(wallet));
+
+            ArgumentCaptor<WalletEntity> walletCaptor = ArgumentCaptor.forClass(WalletEntity.class);
+            when(walletRepository.save(any(WalletEntity.class))).thenAnswer(i -> i.getArguments()[0]);
+
+            String result = walletService.addAllSalesToAssetByFile(TOKEN, file);
+
+            verify(walletRepository).save(walletCaptor.capture());
+
+            WalletEntity savedWallet = walletCaptor.getValue();
+            WalletEntity.Asset savedAsset = savedWallet.getAssets().get(ASSET_NAME);
+
+            assertNotNull(savedAsset);
+            assertEquals(USER_ID, savedWallet.getUserId());
+            assertEquals(ASSET_NAME, savedAsset.getAssetName());
+            assertEquals(10, savedAsset.getQuotaAmount());
+            assertEquals(2, savedAsset.getSalesInfo().size());
+
+            WalletEntity.Asset.SalesInfo savedSale = savedAsset.getSalesInfo().get(1);
+            assertEquals(10, savedSale.getSaleAmount());
+            assertEquals(new BigDecimal(2850), savedSale.getSalePrice());
+            assertEquals(new BigDecimal(2850), savedSale.getSaleQuotaValue());
+
+            String message = "Os registros de vendas foram cadastrados na carteira com sucesso." ;
+
+            assertEquals(message, result);
+        }
+
+        @Test
+        @DisplayName("Should be able to add all sales to asset by file and skip duplicate purchase by date")
+        void shouldBeAbleToAddAllSalesToAssetByFileInWalletAndSkipDuplicateSaleByDate() {
+
+            WalletEntity wallet = createWalletWithAssetAndSaleInfo();
+
+            String csvContent = "asset_name,date,amount,price,quota_value\n" +
+                    "ABCD11,01/01/2024,10,2850,2850\n" +
+                    "ABCD11,01/01/2024,15,2950,2950";
+
+            MultipartFile file = new MockMultipartFile(
+                    "file",
+                    "sales.csv",
+                    "text/csv",
+                    csvContent.getBytes()
+            );
+
+            when(tokenService.extractUserIdFromToken(TOKEN)).thenReturn(USER_ID);
+            when(assetService.getAssetTypeByAssetName(ASSET_NAME)).thenReturn(ASSET_TYPE);
+            when(walletRepository.findByUserId(USER_ID)).thenReturn(Optional.of(wallet));
+
+            ArgumentCaptor<WalletEntity> walletCaptor = ArgumentCaptor.forClass(WalletEntity.class);
+            when(walletRepository.save(any(WalletEntity.class))).thenAnswer(i -> i.getArguments()[0]);
+
+            String result = walletService.addAllSalesToAssetByFile(TOKEN, file);
+
+            verify(walletRepository).save(walletCaptor.capture());
+
+            WalletEntity savedWallet = walletCaptor.getValue();
+            WalletEntity.Asset savedAsset = savedWallet.getAssets().get(ASSET_NAME);
+
+            assertNotNull(savedAsset);
+            assertEquals(USER_ID, savedWallet.getUserId());
+            assertEquals(ASSET_NAME, savedAsset.getAssetName());
+            assertEquals(10, savedAsset.getQuotaAmount());
+            assertEquals(2, savedAsset.getSalesInfo().size());
+
+            WalletEntity.Asset.SalesInfo savedSale = savedAsset.getSalesInfo().get(1);
+            assertEquals(10, savedSale.getSaleAmount());
+            assertEquals(new BigDecimal(2850), savedSale.getSalePrice());
+            assertEquals(new BigDecimal(2850), savedSale.getSaleQuotaValue());
+
+            String message = "Os registros de vendas foram cadastrados na carteira com sucesso." ;
+
+            assertEquals(message, result);
+        }
+
+        @Test
+        @DisplayName("Should not be able to add all sales to asset by file if asset does not exist")
+        void shouldNotBeAbleToAddAllPurchasesToAssetByFileIfAssetDoesNotExist() {
+
+            MultipartFile file = getMultipartFile();
+
+            when(tokenService.extractUserIdFromToken(TOKEN)).thenReturn(USER_ID);
+            when(assetService.getAssetTypeByAssetName(ASSET_NAME)).thenReturn(null);
+
+            ResourceNotFoundException exception = assertThrows(ResourceNotFoundException.class, () -> walletService.addAllPurchasesToAssetByFile(
+                    TOKEN, file
+            ));
+            assertEquals("O ativo " + ASSET_NAME + " informado não existe.", exception.getMessage());
+        }
+    }
 
     @Nested
     class updateSaleToAssetBySaleId {
@@ -1360,5 +1650,17 @@ class WalletServiceTest {
         wallet.setUserId(USER_ID);
         wallet.setAssets(new HashMap<>());
         return wallet;
+    }
+
+    private static MultipartFile getMultipartFile() {
+        String csvContent = "asset_name,date,amount,price,quota_value\n" +
+                "ABCD11,01/01/2024,10,28.50,28.50";
+
+        return new MockMultipartFile(
+                "file",
+                "purchase.csv",
+                "text/csv",
+                csvContent.getBytes()
+        );
     }
 }

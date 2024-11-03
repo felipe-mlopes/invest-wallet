@@ -9,6 +9,7 @@ import lombok.SneakyThrows;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
+import personal.investwallet.exceptions.*;
 import personal.investwallet.modules.asset.AssetService;
 import personal.investwallet.modules.webscraper.ScraperService;
 import personal.investwallet.modules.webscraper.dto.ScraperResponseDto;
@@ -21,10 +22,10 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.Reader;
 import java.math.BigDecimal;
-import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.util.*;
 
 @Service
@@ -47,6 +48,8 @@ public class YieldService {
 
         String userId = tokenService.extractUserIdFromToken(token);
 
+        validateFile(file);
+
         List<YieldInfoRequestDto> yields = readCSVFile(file);
 
         Map<String, Map<String, YieldInfo>> yieldByAssetName = new HashMap<>();
@@ -54,6 +57,12 @@ public class YieldService {
 
         for (YieldInfoRequestDto yield : yields) {
             String assetName = yield.assetName();
+
+            String assetType = assetService.getAssetTypeByAssetName(assetName);
+
+            if (assetType == null)
+                throw new ResourceNotFoundException("O ativo " + assetName + " informado não existe.");
+
             String yieldAt = yield.yieldAt();
             YieldInfo yieldInfo = yield.yieldInfo();
 
@@ -85,65 +94,72 @@ public class YieldService {
 
     }
 
-    private static List<YieldInfoRequestDto> readCSVFile(MultipartFile file) throws IOException, CsvException {
+    private static List<YieldInfoRequestDto> readCSVFile(MultipartFile file) {
 
-        Reader reader = new InputStreamReader(file.getInputStream());
+        try {
+            Reader reader = new InputStreamReader(file.getInputStream());
 
-        CSVParser parser = new CSVParserBuilder().withSeparator(';').build();
-        CSVReader csvReader = new CSVReaderBuilder(reader).withCSVParser(parser).build();
+            CSVParser parser = new CSVParserBuilder().withSeparator(';').build();
+            CSVReader csvReader = new CSVReaderBuilder(reader).withCSVParser(parser).build();
 
-        List<String[]> rows = csvReader.readAll();
+            List<String[]> rows = csvReader.readAll();
+            if (rows.size() <= 1)
+                throw new EmptyFileException("Arquivo é inválido por estar vazio ou com apenas o cabeçalho preenchido");
+
+            validateHeader(rows.get(0));
+
+            return processRows(rows.subList(1, rows.size()));
+
+        } catch (IOException e) {
+            throw new FileProcessingException("Erro ao ler o arquivo CSV");
+        } catch (CsvException e) {
+            throw new InvalidFileFormatException("Erro ao processar o arquivo CSV: " + e.getMessage());
+        }
+    }
+
+    private static List<YieldInfoRequestDto> processRows(List<String[]> rows) {
         List<YieldInfoRequestDto> result = new ArrayList<>();
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
-        // Pular o cabeçalho
-        rows.remove(0);
+        for (int rowNum = 0; rowNum < rows.size(); rowNum++) {
+            try {
+                String[] row = rows.get(rowNum);
+                for (int i = 0; i < row.length; i++) {
+                    row[i] = row[i].replace(",", ".");
+                }
 
-        rows.forEach(row -> {
-            for (int i = 0; i < row.length; i++)
-                row[i] = row[i].replace(",", ".");
+                validateRowData(row, rowNum + 2); // +2 porque começamos após o cabeçalho
 
-            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+                String assetName = row[0].trim();
+                String yieldAt = row[1].trim();
 
-            String assetName = row[0];
+                LocalDate baseLocalDate = parseDate(row[2], formatter, "Data Base", rowNum + 2);
+                LocalDate paymentLocalDate = parseDate(row[3], formatter, "Data de Pagamento", rowNum + 2);
 
-            String yieldAt = row[1];
+                BigDecimal basePrice = parseBigDecimal(row[4], "Preço Base", rowNum + 2);
+                BigDecimal incomeValue = parseBigDecimal(row[5], "Valor do Rendimento", rowNum + 2);
+                BigDecimal yieldValue = parseBigDecimal(row[6], "Valor do Yield", rowNum + 2);
 
-            String baseDate = row[2];
-            LocalDate baseLocalDate = LocalDate.parse(baseDate, formatter);
-            Instant baseDateInstant = baseLocalDate.atStartOfDay(ZoneId.systemDefault()).toInstant();
+                YieldInfo yieldInfo = new YieldInfo(
+                        baseLocalDate.atStartOfDay(ZoneId.systemDefault()).toInstant(),
+                        paymentLocalDate.atStartOfDay(ZoneId.systemDefault()).toInstant(),
+                        basePrice,
+                        incomeValue,
+                        yieldValue
+                );
 
-            String paymentDate = row[3];
-            LocalDate paymentLocalDate = LocalDate.parse(paymentDate, formatter);
-            Instant paymentDateInstant = paymentLocalDate.atStartOfDay(ZoneId.systemDefault()).toInstant();
+                result.add(new YieldInfoRequestDto(assetName, yieldAt, yieldInfo));
 
-            String basePrice = row[4];
-            BigDecimal basePriceDecimal = new BigDecimal(basePrice.trim());
-
-            String incomeValue = row[5];
-            BigDecimal incomeValueDecimal = new BigDecimal(incomeValue.trim());
-
-            String yieldValue = row[6];
-            BigDecimal yieldValueDecimal = new BigDecimal(yieldValue.trim());
-
-            YieldInfo yieldInfo = new YieldInfo(
-                    baseDateInstant,
-                    paymentDateInstant,
-                    basePriceDecimal,
-                    incomeValueDecimal,
-                    yieldValueDecimal
-            );
-
-            YieldInfoRequestDto responseDto = new YieldInfoRequestDto(
-                    assetName,
-                    yieldAt,
-                    yieldInfo
-            );
-
-            result.add(responseDto);
-
-        });
-
-        csvReader.close();
+            } catch (DateTimeParseException e) {
+                throw new InvalidDateFormatException(
+                        "Erro na linha " + (rowNum + 2) + ": " + e.getMessage()
+                );
+            } catch (NumberFormatException e) {
+                throw new InvalidNumberFormatException(
+                        "Erro na linha " + (rowNum + 2) + ": " + e.getMessage()
+                );
+            }
+        }
 
         return result;
     }
@@ -259,6 +275,78 @@ public class YieldService {
         LocalDate today = LocalDate.now();
         DateTimeFormatter todayFormatted = DateTimeFormatter.ofPattern("yyyyMM");
         return today.format(todayFormatted);
+    }
+
+    private void validateFile(MultipartFile file) {
+        if (file == null || file.isEmpty()) {
+            throw new EmptyFileException("O arquivo não enviado ou não preenchido");
+        }
+
+        String filename = file.getOriginalFilename();
+        if (filename == null || !filename.toLowerCase().endsWith(".csv")) {
+            throw new InvalidFileFormatException("O arquivo deve ser um CSV válido");
+        }
+    }
+
+    private static void validateHeader(String[] header) {
+        String[] expectedHeaders = {
+                "Asset Name", "Yield At", "Base Date", "Payment Date",
+                "Base Price", "Income Value", "Yield Value"
+        };
+
+        if (header.length != expectedHeaders.length) {
+            throw new InvalidFileFormatException(
+                    "Formato de cabeçalho inválido. Esperado: " + String.join(", ", expectedHeaders)
+            );
+        }
+
+        for (int i = 0; i < expectedHeaders.length; i++) {
+            if (!header[i].trim().equalsIgnoreCase(expectedHeaders[i])) {
+                throw new InvalidFileFormatException(
+                        "Coluna inválida no cabeçalho. Esperado: '" + expectedHeaders[i] +
+                                "', Encontrado: '" + header[i].trim() + "'"
+                );
+            }
+        }
+    }
+
+    private static void validateRowData(String[] row, int rowNum) {
+        if (row.length != 7) {
+            throw new InvalidFileFormatException(
+                    "A linha " + rowNum + " possui número incorreto de colunas"
+            );
+        }
+
+        for (int i = 0; i < row.length; i++) {
+            if (row[i] == null || row[i].trim().isEmpty()) {
+                throw new InvalidFileFormatException(
+                        "Na linha " + rowNum + ", a coluna " + (i + 1) + " está vazia"
+                );
+            }
+        }
+    }
+
+    private static LocalDate parseDate(String dateStr, DateTimeFormatter formatter,
+                                       String fieldName, int rowNum) {
+        try {
+            return LocalDate.parse(dateStr.trim(), formatter);
+        } catch (DateTimeParseException e) {
+            throw new InvalidDateFormatException(
+                    "Erro na linha " + rowNum + ", " + fieldName +
+                            ": formato de data inválido. Use dd/MM/yyyy"
+            );
+        }
+    }
+
+    private static BigDecimal parseBigDecimal(String value, String fieldName, int rowNum) {
+        try {
+            return new BigDecimal(value.trim());
+        } catch (NumberFormatException e) {
+            throw new InvalidNumberFormatException(
+                    "Erro na linha " + rowNum + ", " + fieldName +
+                            ": valor numérico inválido"
+            );
+        }
     }
 
 }
