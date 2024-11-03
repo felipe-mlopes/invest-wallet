@@ -281,17 +281,15 @@ public class WalletService {
 
         Asset asset = getAssetVerified(assetName,userId);
 
-        int purchaseAmount = - 1 * asset.getPurchasesInfo().stream()
+        int purchaseAmount = asset.getPurchasesInfo().stream()
                 .filter(purchase -> purchase.getPurchaseId().equals(purchaseId))
-                .toList()
-                .get(0)
-                .getPurchaseAmount();
+                .findFirst()
+                .map(purchase -> -1 * purchase.getPurchaseAmount())
+                .orElseThrow(() -> new ResourceNotFoundException("Compra com o ID fornecido não encontrada."));
 
-        boolean purchaseInfoRemove = asset.getPurchasesInfo().removeIf(purchase -> purchase.getPurchaseId().equals(purchaseId));
+        asset.getPurchasesInfo().removeIf(purchase -> purchase.getPurchaseId().equals(purchaseId));
 
-        if (!purchaseInfoRemove) {
-            throw new ResourceNotFoundException("Compra com o ID fornecido não encontrada.");
-        }
+        asset.setQuotaAmount(asset.getQuotaAmount() + purchaseAmount);
 
         walletRepository.updatePurchaseInAssetByPurchaseId(userId, assetName, asset.getPurchasesInfo(), purchaseAmount);
 
@@ -370,9 +368,13 @@ public class WalletService {
                         salesInfo.setSaleQuotaValue(infoDto.quotaValue());
 
                         salesInfoList.add(salesInfo);
-                        totalAmount += infoDto.amount();
+                        totalAmount -= infoDto.amount();
                     }
                 }
+
+                if (totalAmount < 0)
+                    throw new ResourceNotFoundException("A quantidade de cotas do ativo não pode ser negativo.");
+
 
                 asset.setQuotaAmount(totalAmount);
                 wallet.get().getAssets().put(assetName, asset);
@@ -480,15 +482,13 @@ public class WalletService {
 
         int saleAmount = asset.getSalesInfo().stream()
                 .filter(sale -> sale.getSaleId().equals(saleId))
-                .toList()
-                .get(0)
+                .findFirst()
+                .orElseThrow(() -> new ResourceNotFoundException("Venda com o ID fornecido não encontrada."))
                 .getSaleAmount();
 
-        boolean saleInfoRemove = asset.getSalesInfo().removeIf(sale -> sale.getSaleId().equals(saleId));
+        asset.getSalesInfo().removeIf(sale -> sale.getSaleId().equals(saleId));
 
-        if (!saleInfoRemove) {
-            throw new ResourceNotFoundException("Venda com o ID fornecido não encontrada.");
-        }
+        asset.setQuotaAmount(asset.getQuotaAmount() + saleAmount);
 
         walletRepository.updateSaleInAssetBySaleId(userId, assetName, asset.getSalesInfo(), saleAmount);
 
@@ -523,7 +523,7 @@ public class WalletService {
         Asset asset = wallet.getAssets().get(assetName);
 
         if (asset == null)
-            throw new ForbiddenException("O ativo informado não existe na carteira.");
+            throw new BadRequestException("O ativo informado não existe na carteira.");
 
         return asset;
     }
@@ -537,7 +537,6 @@ public class WalletService {
         List<String[]> rows = csvReader.readAll();
         Map<String, List<InfoGenericDto>> groupedInfoByAssetName = new HashMap<>();
 
-        // Pular o cabeçalho
         rows.remove(0);
 
         rows.forEach(row -> {
