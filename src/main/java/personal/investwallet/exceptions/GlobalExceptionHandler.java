@@ -52,4 +52,39 @@ public class GlobalExceptionHandler {
 
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
     }
+
+    @ExceptionHandler(EmptyFileException.class)
+    public ResponseEntity<RestGenericErrorResponseDto> emptyFileException(EmptyFileException exception) {
+
+        RestGenericErrorResponseDto response = new RestGenericErrorResponseDto(HttpStatus.BAD_REQUEST.value(), HttpStatus.BAD_REQUEST, exception.getMessage());
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
+    }
+
+    @ExceptionHandler(InvalidFileFormatException.class)
+    public ResponseEntity<RestGenericErrorResponseDto> invalidFileFormatException(InvalidFileFormatException exception) {
+
+        RestGenericErrorResponseDto response = new RestGenericErrorResponseDto(HttpStatus.BAD_REQUEST.value(), HttpStatus.BAD_REQUEST, exception.getMessage());
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
+    }
+
+    @ExceptionHandler(InvalidDateFormatException.class)
+    public ResponseEntity<RestGenericErrorResponseDto> invalidDateFormatException(InvalidDateFormatException exception) {
+
+        RestGenericErrorResponseDto response = new RestGenericErrorResponseDto(HttpStatus.BAD_REQUEST.value(), HttpStatus.BAD_REQUEST, exception.getMessage());
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
+    }
+
+    @ExceptionHandler(InvalidNumberFormatException.class)
+    public ResponseEntity<RestGenericErrorResponseDto> invalidNumberFormatException(InvalidNumberFormatException exception) {
+
+        RestGenericErrorResponseDto response = new RestGenericErrorResponseDto(HttpStatus.BAD_REQUEST.value(), HttpStatus.BAD_REQUEST, exception.getMessage());
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
+    }
+
+    @ExceptionHandler(FileProcessingException.class)
+    public ResponseEntity<RestGenericErrorResponseDto> fileProcessingException(FileProcessingException exception) {
+
+        RestGenericErrorResponseDto response = new RestGenericErrorResponseDto(HttpStatus.INTERNAL_SERVER_ERROR.value(), HttpStatus.INTERNAL_SERVER_ERROR, exception.getMessage());
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
+    }
 }
