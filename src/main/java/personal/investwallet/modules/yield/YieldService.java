@@ -113,7 +113,7 @@ public class YieldService {
         } catch (IOException e) {
             throw new FileProcessingException("Erro ao ler o arquivo CSV");
         } catch (CsvException e) {
-            throw new InvalidFileFormatException("Erro ao processar o arquivo CSV: " + e.getMessage());
+            throw new InvalidFileFormatException("Erro ao processar o arquivo CSV");
         }
     }
 
@@ -133,8 +133,12 @@ public class YieldService {
                 String assetName = row[0].trim();
                 String yieldAt = row[1].trim();
 
+                validateYieldAt(yieldAt);
+
                 LocalDate baseLocalDate = parseDate(row[2], formatter, "Data Base", rowNum + 2);
                 LocalDate paymentLocalDate = parseDate(row[3], formatter, "Data de Pagamento", rowNum + 2);
+
+                validateDate(baseLocalDate, paymentLocalDate);
 
                 BigDecimal basePrice = parseBigDecimal(row[4], "Preço Base", rowNum + 2);
                 BigDecimal incomeValue = parseBigDecimal(row[5], "Valor do Rendimento", rowNum + 2);
@@ -272,12 +276,14 @@ public class YieldService {
     }
 
     private static String getYieldAt() {
+
         LocalDate today = LocalDate.now();
         DateTimeFormatter todayFormatted = DateTimeFormatter.ofPattern("yyyyMM");
         return today.format(todayFormatted);
     }
 
     private void validateFile(MultipartFile file) {
+
         if (file == null || file.isEmpty()) {
             throw new EmptyFileException("O arquivo não enviado ou não preenchido");
         }
@@ -289,6 +295,7 @@ public class YieldService {
     }
 
     private static void validateHeader(String[] header) {
+
         String[] expectedHeaders = {
                 "Asset Name", "Yield At", "Base Date", "Payment Date",
                 "Base Price", "Income Value", "Yield Value"
@@ -311,11 +318,12 @@ public class YieldService {
     }
 
     private static void validateRowData(String[] row, int rowNum) {
-        if (row.length != 7) {
+
+        if (row.length != 7)
             throw new InvalidFileFormatException(
                     "A linha " + rowNum + " possui número incorreto de colunas"
             );
-        }
+
 
         for (int i = 0; i < row.length; i++) {
             if (row[i] == null || row[i].trim().isEmpty()) {
@@ -326,8 +334,49 @@ public class YieldService {
         }
     }
 
+    private static void validateDate(LocalDate baseDate, LocalDate paymentDate) {
+
+        if (paymentDate.isBefore(baseDate))
+            throw new InvalidDateFormatException(
+                    "A data de pagamento precisa ser maior que a data base de cálculo do dividendo"
+            );
+
+        int currentYear = LocalDate.now().getYear();
+
+        if (baseDate.getYear() > currentYear || paymentDate.getYear() > currentYear)
+            throw new InvalidDateFormatException(
+                    "O ano da data base e/ou da data de pagamento precisa ser menor ou igual a ano corrente"
+            );
+    }
+
+    private static void validateYieldAt(String yieldAt) {
+
+        if (yieldAt.length() != 6)
+            throw new InvalidStringFormatException(
+                    "O yieldAt deve conter apenas 6 caracteres contendo o ano (yyyy) e o mês (mm)"
+            );
+
+        int currentYear = LocalDate.now().getYear();
+
+        for (int i = 0; i < yieldAt.length(); i++) {
+            int year = Integer.parseInt(yieldAt.substring(0, 4));
+            int month = Integer.parseInt(yieldAt.substring(4));
+
+            if (year > currentYear)
+                throw new InvalidStringFormatException(
+                        "O ano informado no YieldAt deve ter 4 caracteres e ser menor ou igual ao ano corrente"
+                );
+
+            if (month > 12)
+                throw new InvalidStringFormatException(
+                        "O mês informado no YieldAt deve ter 2 caracteres e ser válido"
+                );
+        }
+    }
+
     private static LocalDate parseDate(String dateStr, DateTimeFormatter formatter,
                                        String fieldName, int rowNum) {
+
         try {
             return LocalDate.parse(dateStr.trim(), formatter);
         } catch (DateTimeParseException e) {
@@ -339,6 +388,7 @@ public class YieldService {
     }
 
     private static BigDecimal parseBigDecimal(String value, String fieldName, int rowNum) {
+
         try {
             return new BigDecimal(value.trim());
         } catch (NumberFormatException e) {
