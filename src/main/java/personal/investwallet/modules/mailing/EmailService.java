@@ -9,6 +9,7 @@ import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
+import personal.investwallet.exceptions.EmailSendException;
 
 import java.util.Objects;
 import java.util.UUID;
@@ -47,7 +48,7 @@ public class EmailService {
             Objects.requireNonNull(cacheManager.getCache("verificationCodes")).put(to, codeVerification);
 
         } catch (Exception e) {
-            throw new RuntimeException( "Erro ao tentar enviar email. " + e.getLocalizedMessage());
+            throw new EmailSendException("Erro ao tentar enviar email. " + e.getLocalizedMessage());
         }
     }
 
