@@ -3,6 +3,8 @@ package personal.investwallet.modules.asset;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
+import personal.investwallet.exceptions.EmptyFileException;
+import personal.investwallet.exceptions.FileProcessingException;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -15,7 +17,13 @@ public class AssetService {
     @Autowired
     private AssetRepository assetRepository;
 
-    public String readTXT(MultipartFile file) throws IOException {
+    public String readTxtFile(MultipartFile file) throws IOException {
+
+        if (file.isEmpty())
+            throw new EmptyFileException("O arquivo é inválido por estar vazio");
+
+        if (!Objects.requireNonNull(file.getContentType()).equals("text/plain"))
+            throw new FileProcessingException("Formato do arquivo inválido");
 
         List<AssetEntity> assets = new ArrayList<>();
         Set<String> assetNamesSet = new HashSet<>();
