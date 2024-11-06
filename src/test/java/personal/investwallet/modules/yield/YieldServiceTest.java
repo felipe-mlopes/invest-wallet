@@ -1,12 +1,12 @@
 package personal.investwallet.modules.yield;
 
+import com.opencsv.CSVReader;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
+import org.mockito.*;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.web.multipart.MultipartFile;
@@ -16,6 +16,7 @@ import personal.investwallet.modules.webscraper.ScraperService;
 import personal.investwallet.modules.webscraper.dto.ScraperResponseDto;
 import personal.investwallet.security.TokenService;
 
+import java.io.*;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -25,8 +26,7 @@ import java.util.*;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 public class YieldServiceTest {
@@ -41,6 +41,9 @@ public class YieldServiceTest {
     private ScraperService scraperService;
 
     @Mock
+    private MultipartFile mockFile;
+
+    @Mock
     private YieldRepository yieldRepository;
 
     @InjectMocks
@@ -48,6 +51,11 @@ public class YieldServiceTest {
 
     public static final String TOKEN = "validToken";
     public static final String USER_ID = "user1234";
+
+    @BeforeEach
+    void setUp() {
+        when(tokenService.extractUserIdFromToken(TOKEN)).thenReturn(USER_ID);
+    }
 
     @Nested
     class registerAllYieldsReceivedInPreviousMonthsByFile {
@@ -69,7 +77,6 @@ public class YieldServiceTest {
                     csvContent.getBytes()
             );
 
-            when(tokenService.extractUserIdFromToken(TOKEN)).thenReturn(USER_ID);
             when(assetService.getAssetTypeByAssetName("ASSET1")).thenReturn("fundos-imobiliarios");
             when(assetService.getAssetTypeByAssetName("ASSET2")).thenReturn("fundos-imobiliarios");
             when(yieldRepository.save(any(YieldEntity.class))).thenAnswer(i -> i.getArguments()[0]);
@@ -101,7 +108,6 @@ public class YieldServiceTest {
             YieldEntity existingEntity = new YieldEntity();
             existingEntity.setUserId(USER_ID);
 
-            when(tokenService.extractUserIdFromToken(TOKEN)).thenReturn(USER_ID);
             when(assetService.getAssetTypeByAssetName("ASSET1")).thenReturn("fundos-imobiliarios");
             when(yieldRepository.findByUserId(USER_ID)).thenReturn(Optional.of(existingEntity));
 
@@ -307,6 +313,81 @@ public class YieldServiceTest {
         }
 
         @Test
+        @DisplayName("Should not be able to register all yields received in previous months by file with invalid yield at size format in file")
+        void shouldNotBeAbleToRegisterAllYieldsReceivedInPreviousMonthsByFileWithInvalidYieldAtSizeFormatInFile() {
+
+            String invalidDateCsvContent = """
+                Asset Name;Yield At;Base Date;Payment Date;Base Price;Income Value;Yield Value
+                ASSET1;20311;31/10/2023;15/11/2023;100.00;5.00;0.05
+                """;
+
+            MultipartFile file = new MockMultipartFile(
+                    "test.csv",
+                    "test.csv",
+                    "text/csv",
+                    invalidDateCsvContent.getBytes()
+            );
+
+            InvalidStringFormatException exception = assertThrows(InvalidStringFormatException.class, () ->
+                    yieldService.registerAllYieldsReceivedInPreviousMonthsByFile(TOKEN, file));
+
+            assertEquals(
+                    "O yieldAt deve conter apenas 6 caracteres contendo o ano (yyyy) e o mês (mm)",
+                    exception.getMessage()
+            );
+        }
+
+        @Test
+        @DisplayName("Should not be able to register all yields received in previous months by file with invalid yield at year format in file")
+        void shouldNotBeAbleToRegisterAllYieldsReceivedInPreviousMonthsByFileWithInvalidYieldAtYearFormatInFile() {
+
+            String invalidDateCsvContent = """
+                Asset Name;Yield At;Base Date;Payment Date;Base Price;Income Value;Yield Value
+                ASSET1;250011;31/10/2023;15/11/2023;100.00;5.00;0.05
+                """;
+
+            MultipartFile file = new MockMultipartFile(
+                    "test.csv",
+                    "test.csv",
+                    "text/csv",
+                    invalidDateCsvContent.getBytes()
+            );
+
+            InvalidStringFormatException exception = assertThrows(InvalidStringFormatException.class, () ->
+                    yieldService.registerAllYieldsReceivedInPreviousMonthsByFile(TOKEN, file));
+
+            assertEquals(
+                    "O ano informado no YieldAt deve ter 4 caracteres e ser menor ou igual ao ano corrente",
+                    exception.getMessage()
+            );
+        }
+
+        @Test
+        @DisplayName("Should not be able to register all yields received in previous months by file with invalid yield at month format in file")
+        void shouldNotBeAbleToRegisterAllYieldsReceivedInPreviousMonthsByFileWithInvalidYieldAtYearMonthInFile() {
+
+            String invalidDateCsvContent = """
+                Asset Name;Yield At;Base Date;Payment Date;Base Price;Income Value;Yield Value
+                ASSET1;202315;31/10/2023;15/11/2023;100.00;5.00;0.05
+                """;
+
+            MultipartFile file = new MockMultipartFile(
+                    "test.csv",
+                    "test.csv",
+                    "text/csv",
+                    invalidDateCsvContent.getBytes()
+            );
+
+            InvalidStringFormatException exception = assertThrows(InvalidStringFormatException.class, () ->
+                    yieldService.registerAllYieldsReceivedInPreviousMonthsByFile(TOKEN, file));
+
+            assertEquals(
+                    "O mês informado no YieldAt deve ter 2 caracteres e ser válido",
+                    exception.getMessage()
+            );
+        }
+
+        @Test
         @DisplayName("Should not be able to register all yields received in previous months by file with invalid date format in file")
         void shouldNotBeAbleToRegisterAllYieldsReceivedInPreviousMonthsByFileWithInvalidDateFormatInFile() {
 
@@ -327,6 +408,56 @@ public class YieldServiceTest {
 
             assertEquals(
                     "Erro na linha 2, Data Base: formato de data inválido. Use dd/MM/yyyy",
+                    exception.getMessage()
+            );
+        }
+
+        @Test
+        @DisplayName("Should not be able to register all yields received in previous months by file with base date greater than payment date in file")
+        void shouldNotBeAbleToRegisterAllYieldsReceivedInPreviousMonthsByFileWithBaseDateGreaterThanPaymentDateInFile() {
+
+            String invalidDateCsvContent = """
+                Asset Name;Yield At;Base Date;Payment Date;Base Price;Income Value;Yield Value
+                ASSET1;202311;30/11/2023;15/11/2023;100.00;5.00;0.05
+                """;
+
+            MultipartFile file = new MockMultipartFile(
+                    "test.csv",
+                    "test.csv",
+                    "text/csv",
+                    invalidDateCsvContent.getBytes()
+            );
+
+            InvalidDateFormatException exception = assertThrows(InvalidDateFormatException.class, () ->
+                    yieldService.registerAllYieldsReceivedInPreviousMonthsByFile(TOKEN, file));
+
+            assertEquals(
+                    "A data de pagamento precisa ser maior que a data base de cálculo do dividendo",
+                    exception.getMessage()
+            );
+        }
+
+        @Test
+        @DisplayName("Should not be able to register all yields received in previous months by file with date years greater than current year in file")
+        void shouldNotBeAbleToRegisterAllYieldsReceivedInPreviousMonthsByFileWithDateYearsGreaterThanCurrentYearInFile() {
+
+            String invalidDateCsvContent = """
+                Asset Name;Yield At;Base Date;Payment Date;Base Price;Income Value;Yield Value
+                ASSET1;202311;30/10/2025;15/11/2025;100.00;5.00;0.05
+                """;
+
+            MultipartFile file = new MockMultipartFile(
+                    "test.csv",
+                    "test.csv",
+                    "text/csv",
+                    invalidDateCsvContent.getBytes()
+            );
+
+            InvalidDateFormatException exception = assertThrows(InvalidDateFormatException.class, () ->
+                    yieldService.registerAllYieldsReceivedInPreviousMonthsByFile(TOKEN, file));
+
+            assertEquals(
+                    "O ano da data base e/ou da data de pagamento precisa ser menor ou igual a ano corrente",
                     exception.getMessage()
             );
         }
@@ -357,6 +488,31 @@ public class YieldServiceTest {
         }
 
         @Test
+        @DisplayName("Should not be able to register all yields received in previous months by file with invalid number format in file")
+        void shouldNotBeAbleToRegisterAllYieldsReceivedInPreviousMonthsByFileWithInvalidNumberFormatInYieldAtFile() {
+
+            String invalidNumberCsvContent = """
+                Asset Name;Yield At;Base Date;Payment Date;Base Price;Income Value;Yield Value
+                ASSET1;20X311;01/11/2023;15/11/2023;100.00;5.00;0.05
+                """;
+
+            MultipartFile file = new MockMultipartFile(
+                    "test.csv",
+                    "test.csv",
+                    "text/csv",
+                    invalidNumberCsvContent.getBytes()
+            );
+
+            InvalidNumberFormatException exception = assertThrows(InvalidNumberFormatException.class, () ->
+                    yieldService.registerAllYieldsReceivedInPreviousMonthsByFile(TOKEN, file));
+
+            assertEquals(
+                    "Erro na linha 2: For input string: \"20X3\"",
+                    exception.getMessage()
+            );
+        }
+
+        @Test
         @DisplayName("Should not be able to register all yields received in previous months by file with asset not exist")
         void shouldNotBeAbleToRegisterAllYieldsReceivedInPreviousMonthsByFileWithAssetNotExist() {
 
@@ -379,6 +535,20 @@ public class YieldServiceTest {
                     TOKEN, file
             ));
             assertEquals("O ativo ASSET1 informado não existe.", exception.getMessage());
+        }
+
+        @Test
+        @DisplayName("Should not be able to register all yields received in previous months by file when file processing error occurs")
+        void shouldNotBeAbleToRegisterAllYieldsReceivedInPreviousMontyByFileWhenFileProcessingErrorOccurs() throws IOException {
+
+            lenient().when(mockFile.getOriginalFilename()).thenReturn("test.csv");
+            lenient().when(mockFile.getContentType()).thenReturn("text/csv");
+            when(mockFile.getInputStream()).thenThrow(IOException.class);
+
+            FileProcessingException exception = assertThrows(FileProcessingException.class, () -> yieldService.registerAllYieldsReceivedInPreviousMonthsByFile(
+                    TOKEN, mockFile
+            ));
+            assertEquals("Erro ao ler o arquivo CSV", exception.getMessage());
         }
     }
 
