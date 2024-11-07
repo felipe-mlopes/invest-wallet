@@ -87,4 +87,11 @@ public class GlobalExceptionHandler {
         RestGenericErrorResponseDto response = new RestGenericErrorResponseDto(HttpStatus.INTERNAL_SERVER_ERROR.value(), HttpStatus.INTERNAL_SERVER_ERROR, exception.getMessage());
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
     }
+
+    @ExceptionHandler(EmailSendException.class)
+    public ResponseEntity<RestGenericErrorResponseDto> emailSendException(EmailSendException exception) {
+
+        RestGenericErrorResponseDto response = new RestGenericErrorResponseDto(HttpStatus.SERVICE_UNAVAILABLE.value(), HttpStatus.SERVICE_UNAVAILABLE, exception.getMessage());
+        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(response);
+    }
 }
