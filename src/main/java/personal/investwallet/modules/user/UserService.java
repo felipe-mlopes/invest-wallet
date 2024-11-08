@@ -42,7 +42,7 @@ public class UserService {
         Optional<UserEntity> user = userRepository.findByEmail(payload.email());
 
         if (user.isPresent())
-            throw new ConflictException("Usuário já existe.");
+            throw new ConflictException("Usuário já existe");
 
         String password = passwordEncoder.encode(payload.password());
 
@@ -56,13 +56,13 @@ public class UserService {
 
         log.info("Usuário %s cadastrado com sucesso!".formatted(payload.name()));
 
-        return "Usuário cadastrado com sucesso.";
+        return "Usuário cadastrado com sucesso";
     }
 
     public String validateUser(UserValidateRequestDto payload) {
 
         userRepository.findByEmail(payload.email())
-                .orElseThrow(() -> new UnauthorizedException("Email inválido."));
+                .orElseThrow(() -> new UnauthorizedException("Email inválido"));
 
         Cache cache = cacheManager.getCache("verificationCodes");
 
@@ -76,22 +76,22 @@ public class UserService {
 
                 cache.evict(payload.email());
 
-                return "Validação concluída com sucesso!";
+                return "Validação concluída com sucesso";
             } else {
-                throw new UnauthorizedException("O código informado não confere.");
+                throw new UnauthorizedException("O código informado não confere");
             }
         } else {
-            throw new UnauthorizedException("Tempo de validação expirado.");
+            throw new UnauthorizedException("Tempo de validação expirado");
         }
     }
 
     public void verifyExistingUserAndVerificationCode(UserRevalidateRequestDto payload) {
 
         UserEntity user = userRepository.findByEmail(payload.email())
-                .orElseThrow(() -> new UnauthorizedException("Email inválido."));
+                .orElseThrow(() -> new UnauthorizedException("Email inválido"));
 
         if (user.isChecked())
-            throw new ConflictException("O cadastro do usuário já está válido.");
+            throw new ConflictException("O cadastro do usuário já está válido");
 
         Cache cache = cacheManager.getCache("verificationCodes");
 
@@ -99,7 +99,7 @@ public class UserService {
             String cachedCode = cache.get(payload.email(), String.class);
 
             if (cachedCode != null)
-                throw new ConflictException("O código de verificação enviado anteriormente ainda está válido.");
+                throw new ConflictException("O código de verificação enviado anteriormente ainda está válido");
 
         }
     }
@@ -107,15 +107,15 @@ public class UserService {
     public String authUser(UserLoginRequestDto payload, HttpServletResponse response) {
 
         UserEntity user = userRepository.findByEmail(payload.email())
-                .orElseThrow(() -> new UnauthorizedException("Usuário e/ou senha inválidos."));
+                .orElseThrow(() -> new UnauthorizedException("Usuário e/ou senha inválidos"));
 
         boolean isPasswordValid = passwordEncoder.matches(payload.password(), user.getPassword());
 
         if (!isPasswordValid)
-            throw new UnauthorizedException("Usuário e/ou senha inválidos.");
+            throw new UnauthorizedException("Usuário e/ou senha inválidos");
 
         if (!user.isChecked())
-            throw new UnauthorizedException("Usuário não confirmou seu cadastro por e-mail.");
+            throw new UnauthorizedException("Usuário não confirmou seu cadastro por e-mail");
 
         String token = tokenService.generateToken(user);
         tokenService.addTokenToCookies(token, response);
