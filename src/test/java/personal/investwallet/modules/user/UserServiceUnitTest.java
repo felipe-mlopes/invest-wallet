@@ -28,7 +28,7 @@ import java.util.Optional;
 
 
 @ExtendWith(MockitoExtension.class)
-class UserServiceTest {
+class UserServiceUnitTest {
 
     @Mock
     private UserRepository userRepository;
@@ -66,7 +66,7 @@ class UserServiceTest {
             String result = userService.createUser(payload);
 
             verify(userRepository, times(1)).insert(any(UserEntity.class));
-            assertEquals("Usuário cadastrado com sucesso.", result);
+            assertEquals("Usuário cadastrado com sucesso", result);
 
         }
 
@@ -80,7 +80,7 @@ class UserServiceTest {
 
             verify(userRepository, never()).insert(any(UserEntity.class));
             ConflictException exception = assertThrows(ConflictException.class, () -> userService.createUser(payload));
-            assertEquals("Usuário já existe.", exception.getMessage());
+            assertEquals("Usuário já existe", exception.getMessage());
         }
     }
 
@@ -107,7 +107,7 @@ class UserServiceTest {
                     any(Instant.class)
             );
             verify(cache).evict(payload.email());
-            assertEquals("Validação concluída com sucesso!", result);
+            assertEquals("Validação concluída com sucesso", result);
         }
 
         @Test
@@ -120,7 +120,7 @@ class UserServiceTest {
 
             verify(userRepository, never()).updateCheckedAsTrueByEmail(anyString(), any(Instant.class));
             UnauthorizedException exception = assertThrows(UnauthorizedException.class, () -> userService.validateUser(payload));
-            assertEquals("Email inválido.", exception.getMessage());
+            assertEquals("Email inválido", exception.getMessage());
         }
 
         @Test
@@ -135,7 +135,7 @@ class UserServiceTest {
 
             verify(userRepository, never()).updateCheckedAsTrueByEmail(anyString(), any(Instant.class));
             UnauthorizedException exception = assertThrows(UnauthorizedException.class, () -> userService.validateUser(payload));
-            assertEquals("O código informado não confere.", exception.getMessage());
+            assertEquals("O código informado não confere", exception.getMessage());
         }
 
         @Test
@@ -149,7 +149,7 @@ class UserServiceTest {
 
             verify(userRepository, never()).updateCheckedAsTrueByEmail(anyString(), any(Instant.class));
             UnauthorizedException exception = assertThrows(UnauthorizedException.class, () -> userService.validateUser(payload));
-            assertEquals("Tempo de validação expirado.", exception.getMessage());
+            assertEquals("Tempo de validação expirado", exception.getMessage());
         }
     }
 
@@ -181,7 +181,7 @@ class UserServiceTest {
             when(userRepository.findByEmail(payload.email())).thenReturn(Optional.empty());
 
             UnauthorizedException exception = assertThrows(UnauthorizedException.class, () -> userService.verifyExistingUserAndVerificationCode(payload));
-            assertEquals("Email inválido.", exception.getMessage());
+            assertEquals("Email inválido", exception.getMessage());
         }
 
         @Test
@@ -197,7 +197,7 @@ class UserServiceTest {
             when(userRepository.findByEmail(payload.email())).thenReturn(Optional.of(userEntity));
 
             ConflictException exception = assertThrows(ConflictException.class, () -> userService.verifyExistingUserAndVerificationCode(payload));
-            assertEquals("O cadastro do usuário já está válido.", exception.getMessage());
+            assertEquals("O cadastro do usuário já está válido", exception.getMessage());
         }
 
         @Test
@@ -214,7 +214,7 @@ class UserServiceTest {
             when(cache.get(payload.email(), String.class)).thenReturn("ABCD");
 
             ConflictException exception = assertThrows(ConflictException.class, () -> userService.verifyExistingUserAndVerificationCode(payload));
-            assertEquals("O código de verificação enviado anteriormente ainda está válido.", exception.getMessage());
+            assertEquals("O código de verificação enviado anteriormente ainda está válido", exception.getMessage());
         }
     }
 
@@ -256,7 +256,7 @@ class UserServiceTest {
             verify(passwordEncoder, never()).matches(anyString(), anyString());
             verify(tokenService, never()).generateToken(any(UserEntity.class));
             UnauthorizedException exception = assertThrows(UnauthorizedException.class, () -> userService.authUser(payload, response));
-            assertEquals("Usuário e/ou senha inválidos.", exception.getMessage());
+            assertEquals("Usuário e/ou senha inválidos", exception.getMessage());
 
         }
 
@@ -274,7 +274,7 @@ class UserServiceTest {
 
             verify(tokenService, never()).generateToken(any(UserEntity.class));
             UnauthorizedException exception = assertThrows(UnauthorizedException.class, () -> userService.authUser(payload, response));
-            assertEquals("Usuário e/ou senha inválidos.", exception.getMessage());
+            assertEquals("Usuário e/ou senha inválidos", exception.getMessage());
         }
 
         @Test
@@ -292,7 +292,7 @@ class UserServiceTest {
 
             verify(tokenService, never()).generateToken(any(UserEntity.class));
             UnauthorizedException exception = assertThrows(UnauthorizedException.class, () -> userService.authUser(payload, response));
-            assertEquals("Usuário não confirmou seu cadastro por e-mail.", exception.getMessage());
+            assertEquals("Usuário não confirmou seu cadastro por e-mail", exception.getMessage());
         }
 
     }
