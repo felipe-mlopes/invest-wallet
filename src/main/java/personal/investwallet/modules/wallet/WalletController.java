@@ -16,31 +16,10 @@ public class WalletController {
     @Autowired
     private WalletService walletService;
 
-    @GetMapping("/assets")
-    public ResponseEntity<List<Object>> getAllAssets(
-            @CookieValue(value = "access_token") String token
-    ) {
-
-        List<Object> assets = walletService.getAllAssets(token);
-
-        return ResponseEntity.ok(assets);
-    }
-
-    @GetMapping("/asset/{assetName}")
-    public ResponseEntity<GetQuotaAmountResponseDto> getQuotaAmount(
-            @CookieValue(value = "access_token") String token,
-            @PathVariable String assetName
-    ) {
-
-        GetQuotaAmountResponseDto result = walletService.getQuotaAmountOfAnAsset(token, assetName);
-
-        return ResponseEntity.ok(result);
-    }
-
     @PostMapping()
     public ResponseEntity<CreateWalletResponseDto> create(
             @CookieValue(value = "access_token") String token,
-            @RequestBody CreateAssetRequestDto payload
+            @Valid @RequestBody CreateAssetRequestDto payload
     ) {
 
         String result = walletService.addAssetToWallet(token, payload);
@@ -51,7 +30,7 @@ public class WalletController {
     @PostMapping("/purchase")
     public ResponseEntity<UpdateWalletResponseDto> addPurchase(
             @CookieValue(value = "access_token") String token,
-            @RequestBody AddPurchaseRequestDto payload
+            @Valid @RequestBody AddPurchaseRequestDto payload
             ) {
 
         String result = walletService.addPurchaseToAsset(token, payload);
@@ -73,7 +52,7 @@ public class WalletController {
     @PostMapping("/sale")
     public ResponseEntity<UpdateWalletResponseDto> addSale(
             @CookieValue(value = "access_token") String token,
-            @RequestBody AddSaleRequestDto payload
+            @Valid @RequestBody AddSaleRequestDto payload
     ) {
 
         String result = walletService.addSaleToAsset(token, payload);

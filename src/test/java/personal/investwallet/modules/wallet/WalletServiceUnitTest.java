@@ -26,7 +26,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
-class WalletServiceTest {
+class WalletServiceUnitTest {
 
     @Mock
     private WalletRepository walletRepository;
@@ -63,7 +63,7 @@ class WalletServiceTest {
             String result = walletService.addAssetToWallet(TOKEN, payload);
 
             verify(walletRepository, times(1)).save(any(WalletEntity.class));
-            assertEquals("Uma nova carteira foi criada e o ativo ABCD11 foi adicionado.", result);
+            assertEquals("Uma nova carteira foi criada e o ativo ABCD11 foi adicionado", result);
         }
 
         @Test
@@ -79,7 +79,7 @@ class WalletServiceTest {
             String result = walletService.addAssetToWallet(TOKEN, payload);
 
             verify(walletRepository,times(1)).addNewAssetByUserId(eq(USER_ID), eq(payload.assetName()),any(WalletEntity.Asset.class));
-            assertEquals("O ativo ABCD11 foi adicionado à carteira com sucesso.", result);
+            assertEquals("O ativo ABCD11 foi adicionado à carteira com sucesso", result);
         }
 
         @Test
@@ -92,7 +92,7 @@ class WalletServiceTest {
             when(assetService.getAssetTypeByAssetName(payload.assetName())).thenReturn(null);
 
             ResourceNotFoundException exception = assertThrows(ResourceNotFoundException.class, () -> walletService.addAssetToWallet(TOKEN, payload));
-            assertEquals("O ativo informado não existe.", exception.getMessage());
+            assertEquals("O ativo informado não existe", exception.getMessage());
         }
 
         @Test
@@ -110,7 +110,7 @@ class WalletServiceTest {
             when(walletRepository.findByUserId(USER_ID)).thenReturn(Optional.of(existingWallet));
 
             ConflictException exception = assertThrows(ConflictException.class, () -> walletService.addAssetToWallet(TOKEN, payload));
-            assertEquals("O ativo informado já existe na carteira.", exception.getMessage());
+            assertEquals("O ativo informado já existe na carteira", exception.getMessage());
         }
 
         private static CreateAssetRequestDto getAssetsCreateRequestDto() {
@@ -141,7 +141,7 @@ class WalletServiceTest {
 
             String result = walletService.addPurchaseToAsset(TOKEN, payload);
 
-            String message = "A compra do seu ativo " + payload.assetName() + " foi cadastrada com sucesso." ;
+            String message = "A compra do seu ativo " + payload.assetName() + " foi cadastrada com sucesso" ;
 
             verify(walletRepository, times(1)).addPurchaseToAssetByUserIdAndAssetName(
                     eq(USER_ID), eq("ABCD11"), any(WalletEntity.Asset.PurchasesInfo.class), eq(10)
@@ -160,7 +160,7 @@ class WalletServiceTest {
             when(assetService.getAssetTypeByAssetName(payload.assetName())).thenReturn(null);
 
             ResourceNotFoundException exception = assertThrows(ResourceNotFoundException.class, () -> walletService.addPurchaseToAsset(TOKEN, payload));
-            assertEquals("O ativo informado não existe.", exception.getMessage());
+            assertEquals("O ativo informado não existe", exception.getMessage());
         }
 
         @Test
@@ -175,7 +175,7 @@ class WalletServiceTest {
             when(walletRepository.findByUserId(USER_ID)).thenReturn(Optional.empty());
 
             ResourceNotFoundException exception = assertThrows(ResourceNotFoundException.class, () -> walletService.addPurchaseToAsset(TOKEN, payload));
-            assertEquals("Carteira não encontrada para o usuário informado.", exception.getMessage());
+            assertEquals("Carteira não encontrada para o usuário informado", exception.getMessage());
         }
 
         @Test
@@ -190,7 +190,7 @@ class WalletServiceTest {
             when(walletRepository.findByUserId(USER_ID)).thenReturn(Optional.of(new WalletEntity()));
 
             BadRequestException exception = assertThrows(BadRequestException.class, () -> walletService.addPurchaseToAsset(TOKEN, payload));
-            assertEquals("O ativo informado não existe na carteira.", exception.getMessage());
+            assertEquals("O ativo informado não existe na carteira", exception.getMessage());
         }
 
         private static AddPurchaseRequestDto getPurchasesInfoRequestDto() {
@@ -213,7 +213,7 @@ class WalletServiceTest {
         void shouldBeAbleToCreateNewWalletAndAddAllPurchasesToAssetByFile() {
 
             String csvContent = "asset_name,date,amount,price,quota_value\n" +
-                    "ABCD11,01/01/2024,100,28.50,28.50";
+                    "ABCD11,01/01/2024,100,28.51,28.51";
 
             MultipartFile file = new MockMultipartFile(
                     "file",
@@ -244,10 +244,10 @@ class WalletServiceTest {
 
             WalletEntity.Asset.PurchasesInfo savedPurchase = savedAsset.getPurchasesInfo().get(0);
             assertEquals(100, savedPurchase.getPurchaseAmount());
-            assertEquals(new BigDecimal(2850), savedPurchase.getPurchasePrice());
-            assertEquals(new BigDecimal(2850), savedPurchase.getPurchaseQuotaValue());
+            assertEquals(BigDecimal.valueOf(28.51), savedPurchase.getPurchasePrice());
+            assertEquals(BigDecimal.valueOf(28.51), savedPurchase.getPurchaseQuotaValue());
 
-            String message = "Uma carteira foi criada e os registros de vendas foram cadastrados com sucesso." ;
+            String message = "Uma carteira foi criada e os registros de vendas foram cadastrados com sucesso" ;
 
             assertEquals(message, result);
         }
@@ -256,7 +256,7 @@ class WalletServiceTest {
         @DisplayName("Should be able to add all purchases to asset by file in wallet already created")
         void shouldBeAbleToAddAllPurchasesToAssetByFileInWalletAlreadyCreated() {
 
-            WalletEntity wallet = createWalletWithAssetAndSaleInfo();
+            WalletEntity wallet = createWalletWithAssetAndPurchaseInfo();
 
             MultipartFile file = getMultipartFile();
 
@@ -278,14 +278,14 @@ class WalletServiceTest {
             assertEquals(USER_ID, savedWallet.getUserId());
             assertEquals(ASSET_NAME, savedAsset.getAssetName());
             assertEquals(30, savedAsset.getQuotaAmount());
-            assertEquals(1, savedAsset.getPurchasesInfo().size());
+            assertEquals(2, savedAsset.getPurchasesInfo().size());
 
-            WalletEntity.Asset.PurchasesInfo savedPurchase = savedAsset.getPurchasesInfo().get(0);
+            WalletEntity.Asset.PurchasesInfo savedPurchase = savedAsset.getPurchasesInfo().get(1);
             assertEquals(10, savedPurchase.getPurchaseAmount());
-            assertEquals(new BigDecimal(2850), savedPurchase.getPurchasePrice());
-            assertEquals(new BigDecimal(2850), savedPurchase.getPurchaseQuotaValue());
+            assertEquals(BigDecimal.valueOf(28.51), savedPurchase.getPurchasePrice());
+            assertEquals(BigDecimal.valueOf(28.51), savedPurchase.getPurchaseQuotaValue());
 
-            String message = "Os registros de compras foram cadastrados na carteira com sucesso." ;
+            String message = "Os registros de compras foram cadastrados na carteira com sucesso" ;
 
             assertEquals(message, result);
         }
@@ -297,8 +297,8 @@ class WalletServiceTest {
             WalletEntity wallet = createWalletWithAssetAndSaleInfo();
 
             String csvContent = "asset_name,date,amount,price,quota_value\n" +
-                    "ABCD11,01/01/2024,100,2850,2850\n" +
-                    "ABCD11,01/01/2024,200,2950,2950";
+                    "ABCD11,01/01/2024,100,28.51,28.51\n" +
+                    "ABCD11,01/01/2024,200,29.51,29.51";
 
             MultipartFile file = new MockMultipartFile(
                     "file",
@@ -329,10 +329,10 @@ class WalletServiceTest {
 
             WalletEntity.Asset.PurchasesInfo savedPurchase = savedAsset.getPurchasesInfo().get(0);
             assertEquals(100, savedPurchase.getPurchaseAmount());
-            assertEquals(new BigDecimal(2850), savedPurchase.getPurchasePrice());
-            assertEquals(new BigDecimal(2850), savedPurchase.getPurchaseQuotaValue());
+            assertEquals(BigDecimal.valueOf(28.51), savedPurchase.getPurchasePrice());
+            assertEquals(BigDecimal.valueOf(28.51), savedPurchase.getPurchaseQuotaValue());
 
-            String message = "Os registros de compras foram cadastrados na carteira com sucesso." ;
+            String message = "Os registros de compras foram cadastrados na carteira com sucesso" ;
 
             assertEquals(message, result);
         }
@@ -349,7 +349,7 @@ class WalletServiceTest {
             ResourceNotFoundException exception = assertThrows(ResourceNotFoundException.class, () -> walletService.addAllPurchasesToAssetByFile(
                     TOKEN, file
             ));
-            assertEquals("O ativo " + ASSET_NAME + " informado não existe.", exception.getMessage());
+            assertEquals("O ativo " + ASSET_NAME + " informado não existe", exception.getMessage());
         }
     }
 
@@ -393,7 +393,7 @@ class WalletServiceTest {
                     payload
             );
 
-            String message = "A compra " + PURCHASE_ID + " do ativo " + ASSET_NAME + " foi atualizada com sucesso." ;
+            String message = "A compra " + PURCHASE_ID + " do ativo " + ASSET_NAME + " foi atualizada com sucesso" ;
 
             verify(walletRepository, times(1)).restoreAmountOfQuotasInAsset(
                     eq(USER_ID), eq(ASSET_NAME), eq(-5)
@@ -427,7 +427,7 @@ class WalletServiceTest {
                     payload
             );
 
-            String message = "A compra " + PURCHASE_ID + " do ativo " + ASSET_NAME + " foi atualizada com sucesso." ;
+            String message = "A compra " + PURCHASE_ID + " do ativo " + ASSET_NAME + " foi atualizada com sucesso" ;
 
             verify(walletRepository, times(1)).updatePurchaseInAssetByPurchaseId(
                     eq(USER_ID), eq(ASSET_NAME), anyList(), eq(10)
@@ -465,7 +465,7 @@ class WalletServiceTest {
                     payload
             );
 
-            String message = "A compra " + PURCHASE_ID + " do ativo " + ASSET_NAME + " foi atualizada com sucesso." ;
+            String message = "A compra " + PURCHASE_ID + " do ativo " + ASSET_NAME + " foi atualizada com sucesso" ;
 
             verify(walletRepository, times(1)).updatePurchaseInAssetByPurchaseId(
                     eq(USER_ID), eq(ASSET_NAME), purchasesCaptor.capture(), quotaCaptor.capture()
@@ -516,7 +516,7 @@ class WalletServiceTest {
                     payload
             );
 
-            String message = "A compra " + PURCHASE_ID + " do ativo " + ASSET_NAME + " foi atualizada com sucesso." ;
+            String message = "A compra " + PURCHASE_ID + " do ativo " + ASSET_NAME + " foi atualizada com sucesso" ;
 
             verify(walletRepository, times(1)).updatePurchaseInAssetByPurchaseId(
                     eq(USER_ID), eq(ASSET_NAME), anyList(), eq(15)
@@ -551,7 +551,7 @@ class WalletServiceTest {
                     payload
             );
 
-            String message = "A compra " + PURCHASE_ID + " do ativo " + ASSET_NAME + " foi atualizada com sucesso." ;
+            String message = "A compra " + PURCHASE_ID + " do ativo " + ASSET_NAME + " foi atualizada com sucesso" ;
 
             verify(walletRepository, times(1)).updatePurchaseInAssetByPurchaseId(
                     eq(USER_ID), eq(ASSET_NAME), anyList(), eq(10)
@@ -570,7 +570,7 @@ class WalletServiceTest {
             BadRequestException exception = assertThrows(BadRequestException.class, () -> walletService.updatePurchaseToAssetByPurchaseId(
                     TOKEN, ASSET_NAME, UUID.randomUUID().toString(), payload
             ));
-            assertEquals("Não há informações de compra para serem atualizadas.", exception.getMessage());
+            assertEquals("Não há informações de compra para serem atualizadas", exception.getMessage());
         }
 
         @Test
@@ -606,7 +606,7 @@ class WalletServiceTest {
             ResourceNotFoundException exception = assertThrows(ResourceNotFoundException.class, () -> walletService.updatePurchaseToAssetByPurchaseId(
                     TOKEN, ASSET_NAME, UUID.randomUUID().toString(), payload
             ));
-            assertEquals("Não existe compra com o ID informado.", exception.getMessage());
+            assertEquals("Não existe compra com o ID informado", exception.getMessage());
         }
 
         @Test
@@ -621,7 +621,7 @@ class WalletServiceTest {
             ResourceNotFoundException exception = assertThrows(ResourceNotFoundException.class, () -> walletService.updatePurchaseToAssetByPurchaseId(
                     TOKEN, ASSET_NAME, UUID.randomUUID().toString(), payload
             ));
-            assertEquals("Nenhuma carteira foi localizada para esse usuário.", exception.getMessage());
+            assertEquals("Nenhuma carteira foi localizada para esse usuário", exception.getMessage());
         }
 
         @Test
@@ -637,7 +637,7 @@ class WalletServiceTest {
             ResourceNotFoundException exception = assertThrows(ResourceNotFoundException.class, () -> walletService.updatePurchaseToAssetByPurchaseId(
                     TOKEN, ASSET_NAME, UUID.randomUUID().toString(), payload
             ));
-            assertEquals("O ativo informado não existe.", exception.getMessage());
+            assertEquals("O ativo informado não existe", exception.getMessage());
         }
 
         @Test
@@ -654,7 +654,7 @@ class WalletServiceTest {
             ResourceNotFoundException exception = assertThrows(ResourceNotFoundException.class,  () -> walletService.updatePurchaseToAssetByPurchaseId(
                     TOKEN, ASSET_NAME, UUID.randomUUID().toString(), payload
             ));
-            assertEquals("Carteira não encontrada para o usuário informado.", exception.getMessage());
+            assertEquals("Carteira não encontrada para o usuário informado", exception.getMessage());
         }
 
         @Test
@@ -671,7 +671,7 @@ class WalletServiceTest {
             BadRequestException exception = assertThrows(BadRequestException.class, () -> walletService.updatePurchaseToAssetByPurchaseId(
                     TOKEN, ASSET_NAME, UUID.randomUUID().toString(), payload
             ));
-            assertEquals("O ativo informado não existe na carteira.", exception.getMessage());
+            assertEquals("O ativo informado não existe na carteira", exception.getMessage());
         }
 
         private static UpdatePurchaseRequestDto getPurchaseOnUpdateRequestDto() {
@@ -713,7 +713,7 @@ class WalletServiceTest {
                     PURCHASE_ID
             );
 
-            String message = "A compra " + PURCHASE_ID + " do ativo " + ASSET_NAME + " foi removida com sucesso." ;
+            String message = "A compra " + PURCHASE_ID + " do ativo " + ASSET_NAME + " foi removida com sucesso" ;
 
             verify(walletRepository, times(1)).updatePurchaseInAssetByPurchaseId(
                         eq(USER_ID),
@@ -736,7 +736,7 @@ class WalletServiceTest {
             ResourceNotFoundException exception = assertThrows(ResourceNotFoundException.class, () -> walletService.removePurchaseToAssetByPurchaseId(
                     TOKEN, ASSET_NAME, UUID.randomUUID().toString()
             ));
-            assertEquals("Nenhuma carteira foi localizada para esse usuário.", exception.getMessage());
+            assertEquals("Nenhuma carteira foi localizada para esse usuário", exception.getMessage());
 
         }
 
@@ -751,7 +751,7 @@ class WalletServiceTest {
             ResourceNotFoundException exception = assertThrows(ResourceNotFoundException.class, () -> walletService.removePurchaseToAssetByPurchaseId(
                     TOKEN, ASSET_NAME, PURCHASE_ID
             ));
-            assertEquals("O ativo informado não existe.", exception.getMessage());
+            assertEquals("O ativo informado não existe", exception.getMessage());
         }
 
         @Test
@@ -766,7 +766,7 @@ class WalletServiceTest {
             ResourceNotFoundException exception = assertThrows(ResourceNotFoundException.class, () -> walletService.removeSaleToAssetBySaleId(
                     TOKEN, ASSET_NAME, PURCHASE_ID
             ));
-            assertEquals("Carteira não encontrada para o usuário informado.", exception.getMessage());
+            assertEquals("Carteira não encontrada para o usuário informado", exception.getMessage());
         }
 
         @Test
@@ -783,7 +783,7 @@ class WalletServiceTest {
             BadRequestException exception = assertThrows(BadRequestException.class, () -> walletService.removePurchaseToAssetByPurchaseId(
                     TOKEN, ASSET_NAME, PURCHASE_ID)
             );
-            assertEquals("O ativo informado não existe na carteira.", exception.getMessage());
+            assertEquals("O ativo informado não existe na carteira", exception.getMessage());
         }
 
         @Test
@@ -800,7 +800,7 @@ class WalletServiceTest {
             ResourceNotFoundException exception = assertThrows(ResourceNotFoundException.class, () -> walletService.removePurchaseToAssetByPurchaseId(
                     TOKEN, ASSET_NAME, anyString()
             ));
-            assertEquals("Compra com o ID fornecido não encontrada.", exception.getMessage());
+            assertEquals("Compra com o ID fornecido não encontrada", exception.getMessage());
         }
     }
 
@@ -826,7 +826,7 @@ class WalletServiceTest {
 
             String result = walletService.addSaleToAsset(TOKEN, payload);
 
-            String message = "A venda do seu ativo " + payload.assetName() + " foi cadastrada com sucesso." ;
+            String message = "A venda do seu ativo " + payload.assetName() + " foi cadastrada com sucesso" ;
 
             verify(walletRepository, times(1)).addSaleToAssetByUserIdAndAssetName(
                     eq(USER_ID), eq("ABCD11"), any(WalletEntity.Asset.SalesInfo.class), eq(-10)
@@ -845,7 +845,7 @@ class WalletServiceTest {
             when(assetService.getAssetTypeByAssetName(ASSET_NAME)).thenReturn(null);
 
             ResourceNotFoundException exception = assertThrows(ResourceNotFoundException.class, () -> walletService.addSaleToAsset(TOKEN, payload));
-            assertEquals("O ativo informado não existe.", exception.getMessage());
+            assertEquals("O ativo informado não existe", exception.getMessage());
         }
 
         @Test
@@ -860,7 +860,7 @@ class WalletServiceTest {
             when(walletRepository.findByUserId(USER_ID)).thenReturn(Optional.empty());
 
             ResourceNotFoundException exception = assertThrows(ResourceNotFoundException.class, () -> walletService.addSaleToAsset(TOKEN, payload));
-            assertEquals("Carteira não encontrada para o usuário informado.", exception.getMessage());
+            assertEquals("Carteira não encontrada para o usuário informado", exception.getMessage());
         }
 
         @Test
@@ -875,7 +875,7 @@ class WalletServiceTest {
             when(walletRepository.findByUserId(USER_ID)).thenReturn(Optional.of(new WalletEntity()));
 
             BadRequestException exception = assertThrows(BadRequestException.class, () -> walletService.addSaleToAsset(TOKEN, payload));
-            assertEquals("O ativo informado não existe na carteira.", exception.getMessage());
+            assertEquals("O ativo informado não existe na carteira", exception.getMessage());
         }
 
         @Test
@@ -895,7 +895,7 @@ class WalletServiceTest {
             when(walletRepository.findByUserId(USER_ID)).thenReturn(Optional.of(wallet));
 
             BadRequestException exception = assertThrows(BadRequestException.class, () -> walletService.addSaleToAsset(TOKEN, payload));
-            assertEquals("A quantidade de cota do ativo não pode ser negativa.", exception.getMessage());
+            assertEquals("A quantidade de cota do ativo não pode ser negativa", exception.getMessage());
         }
 
         private static AddSaleRequestDto getSalesInfoRequestDto() {
@@ -942,10 +942,10 @@ class WalletServiceTest {
 
             WalletEntity.Asset.SalesInfo savedSale = savedAsset.getSalesInfo().get(0);
             assertEquals(10, savedSale.getSaleAmount());
-            assertEquals(new BigDecimal(2850), savedSale.getSalePrice());
-            assertEquals(new BigDecimal(2850), savedSale.getSaleQuotaValue());
+            assertEquals(BigDecimal.valueOf(28.51), savedSale.getSalePrice());
+            assertEquals(BigDecimal.valueOf(28.51), savedSale.getSaleQuotaValue());
 
-            String message = "Uma carteira foi criada e os registros de vendas foram cadastrados com sucesso." ;
+            String message = "Uma carteira foi criada e os registros de vendas foram cadastrados com sucesso" ;
 
             assertEquals(message, result);
         }
@@ -980,10 +980,10 @@ class WalletServiceTest {
 
             WalletEntity.Asset.SalesInfo savedSale = savedAsset.getSalesInfo().get(1);
             assertEquals(10, savedSale.getSaleAmount());
-            assertEquals(new BigDecimal(2850), savedSale.getSalePrice());
-            assertEquals(new BigDecimal(2850), savedSale.getSaleQuotaValue());
+            assertEquals(BigDecimal.valueOf(28.51), savedSale.getSalePrice());
+            assertEquals(BigDecimal.valueOf(28.51), savedSale.getSaleQuotaValue());
 
-            String message = "Os registros de vendas foram cadastrados na carteira com sucesso." ;
+            String message = "Os registros de vendas foram cadastrados na carteira com sucesso" ;
 
             assertEquals(message, result);
         }
@@ -995,8 +995,8 @@ class WalletServiceTest {
             WalletEntity wallet = createWalletWithAssetAndSaleInfo();
 
             String csvContent = "asset_name,date,amount,price,quota_value\n" +
-                    "ABCD11,01/01/2024,10,2850,2850\n" +
-                    "ABCD11,01/01/2024,15,2950,2950";
+                    "ABCD11,01/01/2024,10,28.51,28.51\n" +
+                    "ABCD11,01/01/2024,15,29.51,29.51";
 
             MultipartFile file = new MockMultipartFile(
                     "file",
@@ -1027,10 +1027,10 @@ class WalletServiceTest {
 
             WalletEntity.Asset.SalesInfo savedSale = savedAsset.getSalesInfo().get(1);
             assertEquals(10, savedSale.getSaleAmount());
-            assertEquals(new BigDecimal(2850), savedSale.getSalePrice());
-            assertEquals(new BigDecimal(2850), savedSale.getSaleQuotaValue());
+            assertEquals(BigDecimal.valueOf(28.51), savedSale.getSalePrice());
+            assertEquals(BigDecimal.valueOf(28.51), savedSale.getSaleQuotaValue());
 
-            String message = "Os registros de vendas foram cadastrados na carteira com sucesso." ;
+            String message = "Os registros de vendas foram cadastrados na carteira com sucesso" ;
 
             assertEquals(message, result);
         }
@@ -1047,7 +1047,7 @@ class WalletServiceTest {
             ResourceNotFoundException exception = assertThrows(ResourceNotFoundException.class, () -> walletService.addAllPurchasesToAssetByFile(
                     TOKEN, file
             ));
-            assertEquals("O ativo " + ASSET_NAME + " informado não existe.", exception.getMessage());
+            assertEquals("O ativo " + ASSET_NAME + " informado não existe", exception.getMessage());
         }
     }
 
@@ -1109,7 +1109,7 @@ class WalletServiceTest {
                     payload
             );
 
-            String message = "A venda " + sale.getSaleId() + " do ativo " + ASSET_NAME + " foi atualizada com sucesso." ;
+            String message = "A venda " + sale.getSaleId() + " do ativo " + ASSET_NAME + " foi atualizada com sucesso" ;
 
             verify(walletRepository, times(1)).restoreAmountOfQuotasInAsset(
                     eq(USER_ID), eq(ASSET_NAME), eq(5)
@@ -1161,7 +1161,7 @@ class WalletServiceTest {
                     payload
             );
 
-            String message = "A venda " + sale.getSaleId() + " do ativo " + ASSET_NAME + " foi atualizada com sucesso." ;
+            String message = "A venda " + sale.getSaleId() + " do ativo " + ASSET_NAME + " foi atualizada com sucesso" ;
 
             verify(walletRepository, times(1)).updateSaleInAssetBySaleId(
                     eq(USER_ID), eq(ASSET_NAME), anyList(), eq(10)
@@ -1214,7 +1214,7 @@ class WalletServiceTest {
                     payload
             );
 
-            String message = "A venda " + sale.getSaleId() + " do ativo " + ASSET_NAME + " foi atualizada com sucesso." ;
+            String message = "A venda " + sale.getSaleId() + " do ativo " + ASSET_NAME + " foi atualizada com sucesso" ;
 
             verify(walletRepository, times(1)).updateSaleInAssetBySaleId(
                     eq(USER_ID), eq(ASSET_NAME), anyList(), eq(10)
@@ -1283,7 +1283,7 @@ class WalletServiceTest {
                     payload
             );
 
-            String message = "A venda " + sale.getSaleId() + " do ativo " + ASSET_NAME + " foi atualizada com sucesso." ;
+            String message = "A venda " + sale.getSaleId() + " do ativo " + ASSET_NAME + " foi atualizada com sucesso" ;
 
             verify(walletRepository, times(1)).updateSaleInAssetBySaleId(
                     eq(USER_ID), eq(ASSET_NAME), anyList(), eq(15)
@@ -1336,7 +1336,7 @@ class WalletServiceTest {
                     payload
             );
 
-            String message = "A venda " + sale.getSaleId() + " do ativo " + ASSET_NAME + " foi atualizada com sucesso." ;
+            String message = "A venda " + sale.getSaleId() + " do ativo " + ASSET_NAME + " foi atualizada com sucesso" ;
 
             verify(walletRepository, times(1)).updateSaleInAssetBySaleId(
                     eq(USER_ID), eq(ASSET_NAME), anyList(), eq(10)
@@ -1355,7 +1355,7 @@ class WalletServiceTest {
             BadRequestException exception = assertThrows(BadRequestException.class, () -> walletService.updateSaleToAssetBySaleId(
                     TOKEN, ASSET_NAME, UUID.randomUUID().toString(), payload
             ));
-            assertEquals("Não há informações de venda para serem atualizadas.", exception.getMessage());
+            assertEquals("Não há informações de venda para serem atualizadas", exception.getMessage());
         }
 
         @Test
@@ -1391,7 +1391,7 @@ class WalletServiceTest {
             ResourceNotFoundException exception = assertThrows(ResourceNotFoundException.class, () -> walletService.updateSaleToAssetBySaleId(
                     TOKEN, ASSET_NAME, UUID.randomUUID().toString(), payload
             ));
-            assertEquals("Não existe venda com o ID informado.", exception.getMessage());
+            assertEquals("Não existe venda com o ID informado", exception.getMessage());
         }
 
         @Test
@@ -1406,7 +1406,7 @@ class WalletServiceTest {
             ResourceNotFoundException exception = assertThrows(ResourceNotFoundException.class, () -> walletService.updateSaleToAssetBySaleId(
                     TOKEN, ASSET_NAME, UUID.randomUUID().toString(), payload
             ));
-            assertEquals("Nenhuma carteira foi localizada para esse usuário.", exception.getMessage());
+            assertEquals("Nenhuma carteira foi localizada para esse usuário", exception.getMessage());
         }
 
         @Test
@@ -1422,7 +1422,7 @@ class WalletServiceTest {
             ResourceNotFoundException exception = assertThrows(ResourceNotFoundException.class, () -> walletService.updateSaleToAssetBySaleId(
                     TOKEN, ASSET_NAME, UUID.randomUUID().toString(), payload
             ));
-            assertEquals("O ativo informado não existe.", exception.getMessage());
+            assertEquals("O ativo informado não existe", exception.getMessage());
         }
 
         @Test
@@ -1439,7 +1439,7 @@ class WalletServiceTest {
             ResourceNotFoundException exception = assertThrows(ResourceNotFoundException.class,  () -> walletService.updateSaleToAssetBySaleId(
                     TOKEN, ASSET_NAME, UUID.randomUUID().toString(), payload
             ));
-            assertEquals("Carteira não encontrada para o usuário informado.", exception.getMessage());
+            assertEquals("Carteira não encontrada para o usuário informado", exception.getMessage());
         }
 
         @Test
@@ -1456,7 +1456,7 @@ class WalletServiceTest {
             BadRequestException exception = assertThrows(BadRequestException.class, () -> walletService.updateSaleToAssetBySaleId(
                     TOKEN, ASSET_NAME, UUID.randomUUID().toString(), payload
             ));
-            assertEquals("O ativo informado não existe na carteira.", exception.getMessage());
+            assertEquals("O ativo informado não existe na carteira", exception.getMessage());
         }
 
         private static UpdateSaleRequestDto getSaleOnUpdateRequestDto() {
@@ -1498,7 +1498,7 @@ class WalletServiceTest {
                     SALE_ID
             );
 
-            String message = "A venda " + SALE_ID + " do ativo " + ASSET_NAME + " foi removida com sucesso." ;
+            String message = "A venda " + SALE_ID + " do ativo " + ASSET_NAME + " foi removida com sucesso" ;
 
             verify(walletRepository, times(1)).updateSaleInAssetBySaleId(
                     eq(USER_ID),
@@ -1521,7 +1521,7 @@ class WalletServiceTest {
             ResourceNotFoundException exception = assertThrows(ResourceNotFoundException.class, () -> walletService.removeSaleToAssetBySaleId(
                     TOKEN, ASSET_NAME, UUID.randomUUID().toString()
             ));
-            assertEquals("Nenhuma carteira foi localizada para esse usuário.", exception.getMessage());
+            assertEquals("Nenhuma carteira foi localizada para esse usuário", exception.getMessage());
 
         }
 
@@ -1536,7 +1536,7 @@ class WalletServiceTest {
             ResourceNotFoundException exception = assertThrows(ResourceNotFoundException.class, () -> walletService.removeSaleToAssetBySaleId(
                     TOKEN, ASSET_NAME, SALE_ID
             ));
-            assertEquals("O ativo informado não existe.", exception.getMessage());
+            assertEquals("O ativo informado não existe", exception.getMessage());
         }
 
         @Test
@@ -1551,7 +1551,7 @@ class WalletServiceTest {
             ResourceNotFoundException exception = assertThrows(ResourceNotFoundException.class, () -> walletService.removeSaleToAssetBySaleId(
                     TOKEN, ASSET_NAME, SALE_ID
             ));
-            assertEquals("Carteira não encontrada para o usuário informado.", exception.getMessage());
+            assertEquals("Carteira não encontrada para o usuário informado", exception.getMessage());
         }
 
         @Test
@@ -1568,7 +1568,7 @@ class WalletServiceTest {
             BadRequestException exception = assertThrows(BadRequestException.class, () -> walletService.removeSaleToAssetBySaleId(
                     TOKEN, ASSET_NAME, SALE_ID)
             );
-            assertEquals("O ativo informado não existe na carteira.", exception.getMessage());
+            assertEquals("O ativo informado não existe na carteira", exception.getMessage());
         }
 
         @Test
@@ -1585,7 +1585,7 @@ class WalletServiceTest {
             ResourceNotFoundException exception = assertThrows(ResourceNotFoundException.class, () -> walletService.removeSaleToAssetBySaleId(
                     TOKEN, ASSET_NAME, anyString()
             ));
-            assertEquals("Venda com o ID fornecido não encontrada.", exception.getMessage());
+            assertEquals("Venda com o ID fornecido não encontrada", exception.getMessage());
         }
     }
 
@@ -1604,7 +1604,7 @@ class WalletServiceTest {
                 PURCHASE_ID,
                 5,
                 BigDecimal.valueOf(25.78),
-                BigDecimal.valueOf(25,78).divideToIntegralValue(BigDecimal.valueOf(5)),
+                BigDecimal.valueOf(25.78).divideToIntegralValue(BigDecimal.valueOf(5)),
                 Instant.now().minus(30, ChronoUnit.MINUTES)
         );
 
@@ -1632,7 +1632,7 @@ class WalletServiceTest {
                 SALE_ID,
                 5,
                 BigDecimal.valueOf(25.78),
-                BigDecimal.valueOf(25,78).divideToIntegralValue(BigDecimal.valueOf(5)),
+                BigDecimal.valueOf(25.78).divideToIntegralValue(BigDecimal.valueOf(5)),
                 Instant.now().minus(30, ChronoUnit.MINUTES)
         );
 
@@ -1654,7 +1654,7 @@ class WalletServiceTest {
 
     private static MultipartFile getMultipartFile() {
         String csvContent = "asset_name,date,amount,price,quota_value\n" +
-                "ABCD11,01/01/2024,10,28.50,28.50";
+                "ABCD11,01/01/2024,10,28.51,28.51";
 
         return new MockMultipartFile(
                 "file",

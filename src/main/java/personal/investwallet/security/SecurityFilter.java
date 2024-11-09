@@ -54,7 +54,7 @@ public class SecurityFilter extends OncePerRequestFilter {
         if (token == null)
             throw new UnauthorizedException("Token não fornecido");
 
-        String userId = tokenService.validateToken(token);
+        String userId = tokenService.extractUserIdFromToken(token);
 
         if (userId != null)
             authenticateUser(userId);
