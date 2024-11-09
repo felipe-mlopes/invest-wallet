@@ -514,7 +514,6 @@ public class WalletService {
         rows.forEach(row -> {
             for (int i = 0; i < row.length; i++)
                 row[i] = row[i]
-                        .replace(".", "")
                         .replace(",", ".");
 
             DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy");
