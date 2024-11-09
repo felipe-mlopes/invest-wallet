@@ -23,7 +23,6 @@ import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
-import java.util.stream.Collectors;
 
 import static personal.investwallet.modules.wallet.WalletEntity.*;
 import static personal.investwallet.modules.wallet.WalletEntity.Asset.*;
@@ -40,40 +39,13 @@ public class WalletService {
     @Autowired
     private AssetService assetService;
 
-    public List<Object> getAllAssets(String token) {
-
-        String userId = tokenService.extractUserIdFromToken(token);
-
-        WalletEntity wallet = walletRepository.findByUserId(userId)
-                .orElseThrow(() -> new ResourceNotFoundException("Nenhuma carteira foi localizada para esse usuário."));;
-
-        return wallet.getAssets().values().stream()
-                .map(asset -> Map.of(
-                        "assetName", asset.getAssetName(),
-                        "assetQuotaAmount", asset.getQuotaAmount()
-                ))
-                .collect(Collectors.toList());
-    }
-
-    public GetQuotaAmountResponseDto getQuotaAmountOfAnAsset(String token, String assetName) {
-
-        String userId = tokenService.extractUserIdFromToken(token);
-
-        WalletEntity wallet = walletRepository.findByUserId(userId)
-                .orElseThrow(() -> new ResourceNotFoundException("Nenhuma carteira foi localizada para esse usuário."));;
-
-        Asset asset = wallet.getAssets().get(assetName);
-
-        return new GetQuotaAmountResponseDto(asset.getQuotaAmount());
-    }
-
     public String addAssetToWallet(String token, CreateAssetRequestDto payload) {
 
         String userId = tokenService.extractUserIdFromToken(token);
         String assetType = verifyAssetNameExists(payload.assetName());
 
         if (assetType == null)
-            throw new ResourceNotFoundException("O ativo informado não existe.");
+            throw new ResourceNotFoundException("O ativo informado não existe");
 
         Optional<WalletEntity> wallet = walletRepository.findByUserId(userId);
 
@@ -87,11 +59,11 @@ public class WalletService {
         if (wallet.isPresent()) {
 
             if (wallet.get().getAssets().containsKey(payload.assetName()))
-                throw new ConflictException("O ativo informado já existe na carteira.");
+                throw new ConflictException("O ativo informado já existe na carteira");
 
             walletRepository.addNewAssetByUserId(userId, newAsset.getAssetName(), newAsset);
 
-            return "O ativo " + payload.assetName() + " foi adicionado à carteira com sucesso.";
+            return "O ativo " + payload.assetName() + " foi adicionado à carteira com sucesso";
 
         } else {
 
@@ -101,7 +73,7 @@ public class WalletService {
 
             walletRepository.save(newWallet);
 
-            return "Uma nova carteira foi criada e o ativo " + payload.assetName() + " foi adicionado.";
+            return "Uma nova carteira foi criada e o ativo " + payload.assetName() + " foi adicionado";
         }
     }
 
@@ -123,7 +95,7 @@ public class WalletService {
 
         walletRepository.addPurchaseToAssetByUserIdAndAssetName(userId, asset.getAssetName(), newPurchase, payload.purchaseAmount());
 
-        return "A compra do seu ativo " + asset.getAssetName() + " foi cadastrada com sucesso." ;
+        return "A compra do seu ativo " + asset.getAssetName() + " foi cadastrada com sucesso" ;
     }
 
     @SneakyThrows
@@ -144,7 +116,7 @@ public class WalletService {
                 String assetType = verifyAssetNameExists(assetName);
 
                 if (assetType == null)
-                    throw new ResourceNotFoundException("O ativo " + assetName + " informado não existe.");
+                    throw new ResourceNotFoundException("O ativo " + assetName + " informado não existe");
 
                 Asset asset = wallet.get().getAssets().getOrDefault(assetName, new Asset());
                 asset.setAssetName(assetName);
@@ -181,7 +153,7 @@ public class WalletService {
             }
 
             walletRepository.save(wallet.get());
-            return "Os registros de compras foram cadastrados na carteira com sucesso.";
+            return "Os registros de compras foram cadastrados na carteira com sucesso";
 
         } else {
             WalletEntity newWallet = new WalletEntity();
@@ -195,7 +167,7 @@ public class WalletService {
                 String assetType = verifyAssetNameExists(assetName);
 
                 if (assetType == null)
-                    throw new ResourceNotFoundException("O ativo " + assetName + " informado não existe.");
+                    throw new ResourceNotFoundException("O ativo " + assetName + " informado não existe");
 
                 Asset asset = new Asset(
                         assetName,
@@ -224,7 +196,7 @@ public class WalletService {
             }
 
             walletRepository.save(newWallet);
-            return "Uma carteira foi criada e os registros de vendas foram cadastrados com sucesso.";
+            return "Uma carteira foi criada e os registros de vendas foram cadastrados com sucesso";
         }
 
     }
@@ -237,7 +209,7 @@ public class WalletService {
     ) {
 
         if (payload.purchaseAmount() == null && payload.purchasePrice() == null && payload.purchaseDate() == null)
-            throw new BadRequestException("Não há informações de compra para serem atualizadas.");
+            throw new BadRequestException("Não há informações de compra para serem atualizadas");
 
         String userId = getUserId(token);
 
@@ -248,7 +220,7 @@ public class WalletService {
                 .findFirst();
 
         if (purchaseSelected.isEmpty()) {
-            throw new ResourceNotFoundException("Não existe compra com o ID informado.");
+            throw new ResourceNotFoundException("Não existe compra com o ID informado");
         }
 
         int purchaseAmount = payload.purchaseAmount() != null ? payload.purchaseAmount() : purchaseSelected.get().getPurchaseAmount();
@@ -272,7 +244,7 @@ public class WalletService {
 
         walletRepository.updatePurchaseInAssetByPurchaseId(userId, assetName, asset.getPurchasesInfo(), purchaseAmount);
 
-        return "A compra " + purchaseId + " do ativo " + assetName + " foi atualizada com sucesso.";
+        return "A compra " + purchaseId + " do ativo " + assetName + " foi atualizada com sucesso";
     }
 
     public String removePurchaseToAssetByPurchaseId(String token, String assetName, String purchaseId) {
@@ -285,7 +257,7 @@ public class WalletService {
                 .filter(purchase -> purchase.getPurchaseId().equals(purchaseId))
                 .findFirst()
                 .map(purchase -> -1 * purchase.getPurchaseAmount())
-                .orElseThrow(() -> new ResourceNotFoundException("Compra com o ID fornecido não encontrada."));
+                .orElseThrow(() -> new ResourceNotFoundException("Compra com o ID fornecido não encontrada"));
 
         asset.getPurchasesInfo().removeIf(purchase -> purchase.getPurchaseId().equals(purchaseId));
 
@@ -293,7 +265,7 @@ public class WalletService {
 
         walletRepository.updatePurchaseInAssetByPurchaseId(userId, assetName, asset.getPurchasesInfo(), purchaseAmount);
 
-        return "A compra " + purchaseId + " do ativo " + assetName + " foi removida com sucesso.";
+        return "A compra " + purchaseId + " do ativo " + assetName + " foi removida com sucesso";
     }
 
     public String addSaleToAsset(String token, AddSaleRequestDto payload) {
@@ -305,7 +277,7 @@ public class WalletService {
         int saleAmount = payload.saleAmount() * -1;
 
         if (asset.getQuotaAmount() + saleAmount < 0)
-            throw new BadRequestException("A quantidade de cota do ativo não pode ser negativa.");
+            throw new BadRequestException("A quantidade de cota do ativo não pode ser negativa");
 
         BigDecimal saleQuotaValue = payload.salePrice().divideToIntegralValue(new BigDecimal(payload.saleAmount()));
 
@@ -319,7 +291,7 @@ public class WalletService {
 
         walletRepository.addSaleToAssetByUserIdAndAssetName(userId, asset.getAssetName(), newSale, saleAmount);
 
-        return "A venda do seu ativo " + asset.getAssetName() + " foi cadastrada com sucesso." ;
+        return "A venda do seu ativo " + asset.getAssetName() + " foi cadastrada com sucesso" ;
     }
 
     @SneakyThrows
@@ -340,7 +312,7 @@ public class WalletService {
                 String assetType = verifyAssetNameExists(assetName);
 
                 if (assetType == null)
-                    throw new ResourceNotFoundException("O ativo " + assetName + " informado não existe.");
+                    throw new ResourceNotFoundException("O ativo " + assetName + " informado não existe");
 
                 Asset asset = wallet.get().getAssets().getOrDefault(assetName, new Asset());
                 asset.setAssetName(assetName);
@@ -373,7 +345,7 @@ public class WalletService {
                 }
 
                 if (totalAmount < 0)
-                    throw new ResourceNotFoundException("A quantidade de cotas do ativo não pode ser negativo.");
+                    throw new ResourceNotFoundException("A quantidade de cotas do ativo não pode ser negativo");
 
 
                 asset.setQuotaAmount(totalAmount);
@@ -381,7 +353,7 @@ public class WalletService {
             }
 
             walletRepository.save(wallet.get());
-            return "Os registros de vendas foram cadastrados na carteira com sucesso.";
+            return "Os registros de vendas foram cadastrados na carteira com sucesso";
 
         } else {
             WalletEntity newWallet = new WalletEntity();
@@ -395,7 +367,7 @@ public class WalletService {
                 String assetType = verifyAssetNameExists(assetName);
 
                 if (assetType == null)
-                    throw new ResourceNotFoundException("O ativo " + assetName + " informado não existe.");
+                    throw new ResourceNotFoundException("O ativo " + assetName + " informado não existe");
 
                 Asset asset = new Asset(
                         assetName,
@@ -424,7 +396,7 @@ public class WalletService {
             }
 
             walletRepository.save(newWallet);
-            return "Uma carteira foi criada e os registros de vendas foram cadastrados com sucesso.";
+            return "Uma carteira foi criada e os registros de vendas foram cadastrados com sucesso";
         }
 
     }
@@ -437,7 +409,7 @@ public class WalletService {
     ) {
 
         if (payload.saleAmount() == null && payload.salePrice() == null && payload.saleDate() == null)
-            throw new BadRequestException("Não há informações de venda para serem atualizadas.");
+            throw new BadRequestException("Não há informações de venda para serem atualizadas");
 
         String userId = getUserId(token);
 
@@ -448,7 +420,7 @@ public class WalletService {
                 .findFirst();
 
         if (saleSelected.isEmpty()) {
-            throw new ResourceNotFoundException("Não existe venda com o ID informado.");
+            throw new ResourceNotFoundException("Não existe venda com o ID informado");
         }
 
         int saleAmount = payload.saleAmount() != null ? payload.saleAmount() : saleSelected.get().getSaleAmount();
@@ -471,7 +443,7 @@ public class WalletService {
 
         walletRepository.updateSaleInAssetBySaleId(userId, assetName, asset.getSalesInfo(), saleAmount);
 
-        return "A venda " + saleId + " do ativo " + assetName + " foi atualizada com sucesso.";
+        return "A venda " + saleId + " do ativo " + assetName + " foi atualizada com sucesso";
     }
 
     public String removeSaleToAssetBySaleId(String token, String assetName, String saleId) {
@@ -483,7 +455,7 @@ public class WalletService {
         int saleAmount = asset.getSalesInfo().stream()
                 .filter(sale -> sale.getSaleId().equals(saleId))
                 .findFirst()
-                .orElseThrow(() -> new ResourceNotFoundException("Venda com o ID fornecido não encontrada."))
+                .orElseThrow(() -> new ResourceNotFoundException("Venda com o ID fornecido não encontrada"))
                 .getSaleAmount();
 
         asset.getSalesInfo().removeIf(sale -> sale.getSaleId().equals(saleId));
@@ -492,7 +464,7 @@ public class WalletService {
 
         walletRepository.updateSaleInAssetBySaleId(userId, assetName, asset.getSalesInfo(), saleAmount);
 
-        return "A venda " + saleId + " do ativo " + assetName + " foi removida com sucesso.";
+        return "A venda " + saleId + " do ativo " + assetName + " foi removida com sucesso";
     }
 
     private String getUserId(String token) {
@@ -501,7 +473,7 @@ public class WalletService {
         boolean isWalletExist = walletRepository.existsByUserId(userId);
 
         if (!isWalletExist)
-            throw new ResourceNotFoundException("Nenhuma carteira foi localizada para esse usuário.");
+            throw new ResourceNotFoundException("Nenhuma carteira foi localizada para esse usuário");
 
         return userId;
     }
@@ -515,15 +487,15 @@ public class WalletService {
         String assetType = verifyAssetNameExists(assetName);
 
         if (assetType == null)
-            throw new ResourceNotFoundException("O ativo informado não existe.");
+            throw new ResourceNotFoundException("O ativo informado não existe");
 
         WalletEntity wallet = walletRepository.findByUserId(userId)
-                .orElseThrow(() -> new ResourceNotFoundException("Carteira não encontrada para o usuário informado."));
+                .orElseThrow(() -> new ResourceNotFoundException("Carteira não encontrada para o usuário informado"));
 
         Asset asset = wallet.getAssets().get(assetName);
 
         if (asset == null)
-            throw new BadRequestException("O ativo informado não existe na carteira.");
+            throw new BadRequestException("O ativo informado não existe na carteira");
 
         return asset;
     }
