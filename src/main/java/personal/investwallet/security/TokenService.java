@@ -15,6 +15,8 @@ import com.auth0.jwt.algorithms.Algorithm;
 import com.auth0.jwt.exceptions.JWTCreationException;
 import com.auth0.jwt.exceptions.JWTVerificationException;
 
+import personal.investwallet.exceptions.BadRequestException;
+import personal.investwallet.exceptions.JWTGenerateFailedException;
 import personal.investwallet.modules.user.UserEntity;
 
 @Service
@@ -23,7 +25,11 @@ public class TokenService {
     private String secret;
 
     public String generateToken(UserEntity user) {
+
         try {
+            if (secret == null)
+                throw new BadRequestException("A chave secreta não pode ser nula");
+
             Algorithm algorithm = Algorithm.HMAC256(secret);
 
             return JWT.create()
@@ -33,20 +39,7 @@ public class TokenService {
                     .sign(algorithm);
 
         } catch (JWTCreationException exception) {
-            throw new RuntimeException("Error while authenticating");
-        }
-    }
-
-    public String validateToken(String token) {
-        try {
-            Algorithm algorithm = Algorithm.HMAC256(secret);
-            return JWT.require(algorithm)
-                    .withIssuer("login-auth-api")
-                    .build()
-                    .verify(token)
-                    .getSubject();
-        } catch (JWTVerificationException exception) {
-            return null;
+            throw new JWTGenerateFailedException("Erro inesperado enquanto estava autenticando");
         }
     }
 
