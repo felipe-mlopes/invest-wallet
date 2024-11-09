@@ -1,6 +1,5 @@
 package personal.investwallet.modules.yield;
 
-import com.opencsv.CSVReader;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -29,7 +28,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
-public class YieldServiceTest {
+public class YieldServiceUnitTest {
 
     @Mock
     private TokenService tokenService;
