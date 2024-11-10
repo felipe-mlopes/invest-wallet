@@ -24,31 +24,31 @@ public class UserController {
     private TokenService tokenService;
 
     @PostMapping("/register")
-    public ResponseEntity<CreateUserResponseDto> create(@Valid @RequestBody UserCreateRequestDto payload) {
+    public ResponseEntity<UserSuccessResponseDto> create(@Valid @RequestBody UserCreateRequestDto payload) {
 
         String result = userService.createUser(payload);
 
         emailService.sendUserConfirmationEmail(payload.email());
 
-        return ResponseEntity.created(null).body(new CreateUserResponseDto(result));
+        return ResponseEntity.created(null).body(new UserSuccessResponseDto(result));
     }
 
     @PatchMapping("/validate")
-    public ResponseEntity<ValidateUserRespondeDto> validate(@Valid @RequestBody UserValidateRequestDto payload) {
+    public ResponseEntity<UserSuccessResponseDto> validate(@Valid @RequestBody UserValidateRequestDto payload) {
 
         String result = userService.validateUser(payload);
 
-        return ResponseEntity.ok(new ValidateUserRespondeDto(result));
+        return ResponseEntity.ok(new UserSuccessResponseDto(result));
     }
 
     @PostMapping("/revalidate")
-    public ResponseEntity<RevalidateUserResponseDto> revalidate(@Valid @RequestBody UserRevalidateRequestDto payload) {
+    public ResponseEntity<UserSuccessResponseDto> revalidate(@Valid @RequestBody UserRevalidateRequestDto payload) {
 
         userService.verifyExistingUserAndVerificationCode(payload);
 
         emailService.sendUserConfirmationEmail(payload.email());
 
-        return ResponseEntity.ok(new RevalidateUserResponseDto("Código de confirmação reenviado"));
+        return ResponseEntity.ok(new UserSuccessResponseDto("Código de confirmação reenviado"));
     }
 
     @PostMapping("/login")
