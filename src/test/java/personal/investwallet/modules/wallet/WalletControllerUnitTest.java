@@ -3,7 +3,6 @@ package personal.investwallet.modules.wallet;
 import jakarta.validation.Validation;
 import jakarta.validation.Validator;
 import jakarta.validation.ValidatorFactory;
-import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -14,9 +13,8 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import personal.investwallet.exceptions.BadRequestException;
-import personal.investwallet.exceptions.ConflictException;
-import personal.investwallet.exceptions.ResourceNotFoundException;
+import org.springframework.mock.web.MockMultipartFile;
+import org.springframework.web.multipart.MultipartFile;
 import personal.investwallet.modules.wallet.dto.*;
 
 import java.math.BigDecimal;
@@ -50,66 +48,23 @@ public class WalletControllerUnitTest {
     class Create {
 
         @Test
-        @DisplayName("Should be able to create wallet and add asset name with valid payload")
-        void shouldBeAbleToCreateWalletAndAddAssetNameWithValidPayload() {
+        @DisplayName("Should be able to create wallet and add asset to it with valid payload")
+        void shouldBeAbleToCreateWalletAndAddAssetToItWithValidPayload() {
 
             CreateAssetRequestDto payload = new CreateAssetRequestDto("ABCD11");
 
-            String message = "O ativo ABCD11 foi adicionado à carteira com sucesso";
-
-            when(walletService.addAssetToWallet(TOKEN, payload)).thenReturn(message);
-
-            ResponseEntity<CreateWalletResponseDto> response = walletController.create(TOKEN, payload);
+            ResponseEntity<WallerSuccessResponseDto> response = walletController.create(TOKEN, payload);
 
             assertNotNull(response);
             assertEquals(HttpStatus.CREATED, response.getStatusCode());
             assertNotNull(response.getBody());
-            assertEquals(message, response.getBody().message());
 
             verify(walletService, times(1)).addAssetToWallet(TOKEN, payload);
         }
 
         @Test
-        @DisplayName("Should not be able to create wallet and add asset name when asset name does not exist")
-        void shouldNotBeAbleToCreateWalletAndAddAssetNameWhenAssetNameDoesNotExist() {
-
-            CreateAssetRequestDto payload = new CreateAssetRequestDto("ABCD11");
-
-            String message = "O ativo informado não existe.";
-
-            when(walletService.addAssetToWallet(TOKEN, payload)).thenThrow(
-                    new ResourceNotFoundException(message)
-            );
-
-            ResourceNotFoundException exception = assertThrows(ResourceNotFoundException.class,
-                    () -> walletController.create(TOKEN, payload));
-
-            assertEquals(message, exception.getMessage());
-            verify(walletService, times(1)).addAssetToWallet(TOKEN, payload);
-        }
-
-        @Test
-        @DisplayName("Should not be able to create wallet and add asset name when asset already exists")
-        void shouldNotBeAbleToCreateWalletAndAddAssetNameWhenAssetAlreadyExists() {
-
-            CreateAssetRequestDto payload = new CreateAssetRequestDto("ABCD11");
-
-            String message = "O ativo informado já existe na carteira";
-
-            when(walletService.addAssetToWallet(TOKEN, payload)).thenThrow(
-                    new ConflictException(message)
-            );
-
-            ConflictException exception = assertThrows(ConflictException.class,
-                    () -> walletController.create(TOKEN, payload));
-
-            assertEquals(message, exception.getMessage());
-            verify(walletService, times(1)).addAssetToWallet(TOKEN, payload);
-        }
-
-        @Test
-        @DisplayName("Should not be able to create wallet and add asset name with empty payload")
-        void shouldNotBeAbleToCreateWalletAndAddAssetNameWithEmptyPayload() {
+        @DisplayName("Should not be able to create wallet and add asset to it with empty payload")
+        void shouldNotBeAbleToCreateWalletAndAddAssetToItWithEmptyPayload() {
 
             CreateAssetRequestDto invalidPayload = new CreateAssetRequestDto("");
 
@@ -118,8 +73,8 @@ public class WalletControllerUnitTest {
         }
 
         @Test
-        @DisplayName("Should not be able to create wallet and add asset name with invalid payload")
-        void shouldNotBeAbleToCreateWalletAndAddAssetNameWithInvalidPayload() {
+        @DisplayName("Should not be able to create wallet and add asset to it with invalid payload")
+        void shouldNotBeAbleToCreateWalletAndAddAssetToItWithInvalidPayload() {
 
             CreateAssetRequestDto invalidPayload = new CreateAssetRequestDto("AB11");
 
@@ -134,85 +89,28 @@ public class WalletControllerUnitTest {
     class AddPurchase {
 
         @Test
-        @DisplayName("Should be able to add purchase in wallet created with valid payload")
-        void shouldBeAbleToAddPurchaseInWalletCreatedWithValidPayload() {
+        @DisplayName("Should be able to add purchase of asset to wallet with valid payload")
+        void shouldBeAbleToAddPurchaseOfAssetToWalletWithValidPayload() {
 
-            AddPurchaseRequestDto payload = getAddPurchaseRequestDto();
+            AddPurchaseRequestDto payload = new AddPurchaseRequestDto(
+                    "ABCD11",
+                    100,
+                    BigDecimal.valueOf(50.00),
+                    Instant.now().minus(Duration.ofDays(1))
+            );
 
-            String message = "A compra do seu ativo ABCD11 foi cadastrada com sucesso";
-
-            when(walletService.addPurchaseToAsset(TOKEN, payload)).thenReturn(message);
-
-            ResponseEntity<UpdateWalletResponseDto> response = walletController.addPurchase(TOKEN, payload);
+            ResponseEntity<WallerSuccessResponseDto> response = walletController.addPurchase(TOKEN, payload);
 
             assertNotNull(response);
             assertEquals(HttpStatus.OK, response.getStatusCode());
             assertNotNull(response.getBody());
-            assertEquals(message, response.getBody().message());
 
             verify(walletService, times(1)).addPurchaseToAsset(TOKEN, payload);
         }
 
         @Test
-        @DisplayName("Should not be able to add purchase in wallet created when asset name does not exist")
-        void shouldNotBeAbleToAddPurchaseInWalletCreatedWhenAssetNameDoesNotExist() {
-
-            AddPurchaseRequestDto payload = getAddPurchaseRequestDto();
-
-            String message = "O ativo informado não existe";
-
-            when(walletService.addPurchaseToAsset(TOKEN, payload)).thenThrow(
-                    new ResourceNotFoundException(message)
-            );
-
-            ResourceNotFoundException exception = assertThrows(ResourceNotFoundException.class,
-                    () -> walletController.addPurchase(TOKEN, payload));
-
-            assertEquals(message, exception.getMessage());
-            verify(walletService, times(1)).addPurchaseToAsset(TOKEN, payload);
-        }
-
-        @Test
-        @DisplayName("Should not be able to add purchase when user wallet does not exist")
-        void shouldNotBeAbleToAddPurchaseWhenUserWalletIsNotExist() {
-
-            AddPurchaseRequestDto payload = getAddPurchaseRequestDto();
-
-            String message = "Carteira não encontrada para o usuário informado";
-
-            when(walletService.addPurchaseToAsset(TOKEN, payload)).thenThrow(
-                    new ResourceNotFoundException(message)
-            );
-
-            ResourceNotFoundException exception = assertThrows(ResourceNotFoundException.class,
-                    () -> walletController.addPurchase(TOKEN, payload));
-
-            assertEquals(message, exception.getMessage());
-            verify(walletService, times(1)).addPurchaseToAsset(TOKEN, payload);
-        }
-
-        @Test
-        @DisplayName("Should not be able to add purchase in wallet created when asset does not belong user wallet")
-        void shouldNotBeAbleToAddPurchaseInWalletCreatedWhenAssetIsDoesNotUserBelongToUserWallet() {
-
-            AddPurchaseRequestDto payload = getAddPurchaseRequestDto();
-
-            String message = "O ativo informado não existe na carteira";
-
-            when(walletService.addPurchaseToAsset(TOKEN, payload)).thenThrow(
-                    new BadRequestException(message)
-            );
-
-            BadRequestException exception = assertThrows(BadRequestException.class,
-                    () -> walletController.addPurchase(TOKEN, payload));
-
-            assertEquals(message, exception.getMessage());
-            verify(walletService, times(1)).addPurchaseToAsset(TOKEN, payload);
-        }
-
-        @Test
-        @DisplayName("Should not be able to add purchase in wallet created with empty asset name in payload")
-        void shouldNotBeAbleToAddPurchaseInWalletCreatedWithEmptyAssetNameInPayload() {
+        @DisplayName("Should not be able to add purchase of asset to wallet with empty asset name in payload")
+        void shouldNotBeAbleToAddPurchaseOfAssetToWalletWithEmptyAssetNameInPayload() {
 
             AddPurchaseRequestDto invalidPayload = new AddPurchaseRequestDto(
                     "",
@@ -227,8 +125,8 @@ public class WalletControllerUnitTest {
         }
 
         @Test
-        @DisplayName("Should not be able to add purchase in wallet create with invalid payload")
-        void shouldNotBeAbleToAddPurchaseInWalletCreatedWithInvalidPayload() {
+        @DisplayName("Should not be able to add purchase of asset to wallet with invalid payload")
+        void shouldNotBeAbleToAddPurchaseOfAssetToWalletWithInvalidPayload() {
 
             AddPurchaseRequestDto invalidPayload = new AddPurchaseRequestDto(
                     "AB11",
@@ -245,14 +143,32 @@ public class WalletControllerUnitTest {
             assertTrue(violations.stream().anyMatch(v -> v.getMessage().equals("O preço da compra deve ser maior que zero")));
             assertTrue(violations.stream().anyMatch(v -> v.getMessage().equals("A data da compra não pode ser no futuro")));
         }
+    }
 
-        private static @NotNull AddPurchaseRequestDto getAddPurchaseRequestDto() {
-            return new AddPurchaseRequestDto(
-                    "ABCD11",
-                    100,
-                    BigDecimal.valueOf(50.00),
-                    Instant.now().minus(Duration.ofDays(1))
+    @Nested
+    class AddManyPurchasesByCSV {
+
+        @Test
+        @DisplayName("Should be able to add many purchases of asset to wallet by using file")
+        void shouldBeAbleToAddManyPurchasesOfAssetToWalletByUsingFile() {
+
+            String csvContent = "asset_name,date,amount,price,quota_value\n" +
+                    "ABCD11,01/01/2024,10,28.51,28.51";
+
+            MultipartFile file = new MockMultipartFile(
+                    "purchases",
+                    "purchases.csv",
+                    "text/csv",
+                    csvContent.getBytes()
             );
+
+            ResponseEntity<WallerSuccessResponseDto> response = walletController.addManyPurchasesByCSV(TOKEN, file);
+
+            assertNotNull(response);
+            assertEquals(HttpStatus.OK, response.getStatusCode());
+            assertNotNull(response.getBody());
+
+            verify(walletService, times(1)).addAllPurchasesToAssetByFile(TOKEN, file);
         }
     }
 
@@ -260,21 +176,16 @@ public class WalletControllerUnitTest {
     class UpdatePurchase {
 
         @Test
-        @DisplayName("Should be able to update purchase in wallet created with valid payload")
-        void shouldBeAbleToUpdatePurchaseInWalletCreatedWithValidPayload() {
+        @DisplayName("Should be able to update purchase of asset in wallet with valid payload")
+        void shouldBeAbleToUpdatePurchaseOfAssetInWalletWithValidPayload() {
 
-            UpdatePurchaseRequestDto payload = getUpdatePurchaseRequestDto();
+            UpdatePurchaseRequestDto payload = new UpdatePurchaseRequestDto(
+                    100,
+                    BigDecimal.valueOf(50.00),
+                    Instant.now().minus(Duration.ofDays(1))
+            );
 
-            String message = "A compra purchaseId do ativo ABCD11 foi atualizada com sucesso";
-
-            when(walletService.updatePurchaseToAssetByPurchaseId(
-                    TOKEN,
-                    "ABCD11",
-                    "purchaseId",
-                    payload
-            )).thenReturn(message);
-
-            ResponseEntity<UpdateWalletResponseDto> response = walletController.updatePurchase(
+            ResponseEntity<WallerSuccessResponseDto> response = walletController.updatePurchase(
                     TOKEN,
                     "ABCD11",
                     "purchaseId",
@@ -284,7 +195,6 @@ public class WalletControllerUnitTest {
             assertNotNull(response);
             assertEquals(HttpStatus.OK, response.getStatusCode());
             assertNotNull(response.getBody());
-            assertEquals(message, response.getBody().message());
 
             verify(walletService, times(1)).updatePurchaseToAssetByPurchaseId(
                     TOKEN,
@@ -295,172 +205,8 @@ public class WalletControllerUnitTest {
         }
 
         @Test
-        @DisplayName("Should not be able to update purchase in wallet created with null payload")
-        void shouldNotBeAbleToAddPurchaseInWalletCreatedWithEmptyPayload() {
-
-            UpdatePurchaseRequestDto payload = new UpdatePurchaseRequestDto(
-                    null,
-                    null,
-                    null
-            );
-
-            String message = "Não há informações de compra para serem atualizadas";
-
-            when(walletService.updatePurchaseToAssetByPurchaseId(
-                    TOKEN,
-                    "ABCD11",
-                    "purchaseId",
-                    payload)
-            ).thenThrow(
-                    new BadRequestException(message)
-            );
-
-            BadRequestException exception = assertThrows(BadRequestException.class,
-                    () -> walletController.updatePurchase(TOKEN,
-                            "ABCD11",
-                            "purchaseId",
-                            payload));
-
-            assertEquals(message, exception.getMessage());
-            verify(walletService, times(1)).updatePurchaseToAssetByPurchaseId(
-                    TOKEN,
-                    "ABCD11",
-                    "purchaseId",
-                    payload
-            );
-        }
-
-        @Test
-        @DisplayName("Should not be able to update purchase in wallet created when asset name does not exist")
-        void shouldNotBeAbleToAddPurchaseInWalletCreatedWhenAssetNameDoesNotExist() {
-
-            UpdatePurchaseRequestDto payload = getUpdatePurchaseRequestDto();
-
-            String message = "O ativo informado não existe";
-
-            when(walletService.updatePurchaseToAssetByPurchaseId(
-                    TOKEN,
-                    "ABCD11",
-                    "purchaseId",
-                    payload)
-            ).thenThrow(
-                    new ResourceNotFoundException(message)
-            );
-
-            ResourceNotFoundException exception = assertThrows(ResourceNotFoundException.class,
-                    () -> walletController.updatePurchase(TOKEN,
-                            "ABCD11",
-                            "purchaseId",
-                            payload));
-
-            assertEquals(message, exception.getMessage());
-            verify(walletService, times(1)).updatePurchaseToAssetByPurchaseId(
-                    TOKEN,
-                    "ABCD11",
-                    "purchaseId",
-                    payload
-            );
-        }
-
-        @Test
-        @DisplayName("Should not be able to update purchase when user wallet does not exist")
-        void shouldNotBeAbleToUpdatePurchaseWhenUserWalletIsNotExist() {
-
-            UpdatePurchaseRequestDto payload = getUpdatePurchaseRequestDto();
-
-            String message = "Carteira não encontrada para o usuário informado";
-
-            when(walletService.updatePurchaseToAssetByPurchaseId(
-                    TOKEN,
-                    "ABCD11",
-                    "purchaseId",
-                    payload)
-            ).thenThrow(
-                    new ResourceNotFoundException(message)
-            );
-
-            ResourceNotFoundException exception = assertThrows(ResourceNotFoundException.class,
-                    () -> walletController.updatePurchase(TOKEN,
-                            "ABCD11",
-                            "purchaseId",
-                            payload));
-
-            assertEquals(message, exception.getMessage());
-            verify(walletService, times(1)).updatePurchaseToAssetByPurchaseId(
-                    TOKEN,
-                    "ABCD11",
-                    "purchaseId",
-                    payload
-            );
-        }
-
-        @Test
-        @DisplayName("Should not be able to update purchase in wallet created when asset does not belong to user wallet")
-        void shouldNotBeAbleToUpdatePurchaseInWalletCreatedWhenAssetIsDoesNotBelongToUserWallet() {
-
-            UpdatePurchaseRequestDto payload = getUpdatePurchaseRequestDto();
-
-            String message = "O ativo informado não existe na carteira";
-
-            when(walletService.updatePurchaseToAssetByPurchaseId(
-                    TOKEN,
-                    "ABCD11",
-                    "purchaseId",
-                    payload)
-            ).thenThrow(
-                    new BadRequestException(message)
-            );
-
-            BadRequestException exception = assertThrows(BadRequestException.class,
-                    () -> walletController.updatePurchase(TOKEN,
-                            "ABCD11",
-                            "purchaseId",
-                            payload));
-
-            assertEquals(message, exception.getMessage());
-            verify(walletService, times(1)).updatePurchaseToAssetByPurchaseId(
-                    TOKEN,
-                    "ABCD11",
-                    "purchaseId",
-                    payload
-            );
-        }
-
-        @Test
-        @DisplayName("Should not be able to update purchase in wallet created when purchase does not belong to asset")
-        void shouldNotBeAbleToUpdatePurchaseInWalletCreatedWhenPurchaseIsDoesNotBelongAsset() {
-
-            UpdatePurchaseRequestDto payload = getUpdatePurchaseRequestDto();
-
-            String message = "Não existe compra com o ID informado";
-
-            when(walletService.updatePurchaseToAssetByPurchaseId(
-                    TOKEN,
-                    "ABCD11",
-                    "purchaseId",
-                    payload)
-            ).thenThrow(
-                    new ResourceNotFoundException(message)
-            );
-
-            ResourceNotFoundException exception = assertThrows(ResourceNotFoundException.class,
-                    () -> walletController.updatePurchase(TOKEN,
-                            "ABCD11",
-                            "purchaseId",
-                            payload));
-
-            assertEquals(message, exception.getMessage());
-            verify(walletService, times(1)).updatePurchaseToAssetByPurchaseId(
-                    TOKEN,
-                    "ABCD11",
-                    "purchaseId",
-                    payload
-            );
-        }
-
-        @Test
-        @DisplayName("Should not be able to update purchase in wallet create with invalid payload")
-        void shouldNotBeAbleToUpdatePurchaseInWalletCreatedWithInvalidPayload() {
+        @DisplayName("Should not be able to update purchase of asset in wallet create with invalid payload")
+        void shouldNotBeAbleToUpdatePurchaseOfAssetInWalletWithInvalidPayload() {
 
             UpdatePurchaseRequestDto invalidPayload = new UpdatePurchaseRequestDto(
                     0,
@@ -475,12 +221,27 @@ public class WalletControllerUnitTest {
             assertTrue(violations.stream().anyMatch(v -> v.getMessage().equals("O preço da compra deve ser maior que zero")));
             assertTrue(violations.stream().anyMatch(v -> v.getMessage().equals("A data da compra não pode ser no futuro")));
         }
+    }
 
-        private static @NotNull UpdatePurchaseRequestDto getUpdatePurchaseRequestDto() {
-            return new UpdatePurchaseRequestDto(
-                    100,
-                    BigDecimal.valueOf(50.00),
-                    Instant.now().minus(Duration.ofDays(1))
+    @Nested
+    class RemovePurchase {
+
+        @Test
+        @DisplayName("Should be able to remove purchase of asset from wallet by purchaseId")
+        void shouldBeAbleToRemovePurchaseOfAssetFromWalletByPurchaseId() {
+
+            ResponseEntity<WallerSuccessResponseDto> response = walletController.removePurchase(
+                    TOKEN, "ABCD11", "purchaseId"
+            );
+
+            assertNotNull(response);
+            assertEquals(HttpStatus.OK, response.getStatusCode());
+            assertNotNull(response.getBody());
+
+            verify(walletService, times(1)).removePurchaseToAssetByPurchaseId(
+                    TOKEN,
+                    "ABCD11",
+                    "purchaseId"
             );
         }
     }
@@ -489,104 +250,28 @@ public class WalletControllerUnitTest {
     class AddSale {
 
         @Test
-        @DisplayName("Should be able to add sale in wallet created with valid payload")
-        void shouldBeAbleToAddSaleInWalletCreatedWithValidPayload() {
+        @DisplayName("Should be able to add sale of asset from wallet with valid payload")
+        void shouldBeAbleToAddSaleOfAssetFromWalletWithValidPayload() {
 
-            AddSaleRequestDto payload = getAddSaleRequestDto();
+            AddSaleRequestDto payload = new AddSaleRequestDto(
+                    "ABCD11",
+                    100,
+                    BigDecimal.valueOf(50.00),
+                    Instant.now().minus(Duration.ofDays(1))
+            );
 
-            String message = "A venda do seu ativo ABCD11 foi cadastrada com sucesso";
-
-            when(walletService.addSaleToAsset(TOKEN, payload)).thenReturn(message);
-
-            ResponseEntity<UpdateWalletResponseDto> response = walletController.addSale(TOKEN, payload);
+            ResponseEntity<WallerSuccessResponseDto> response = walletController.addSale(TOKEN, payload);
 
             assertNotNull(response);
             assertEquals(HttpStatus.OK, response.getStatusCode());
             assertNotNull(response.getBody());
-            assertEquals(message, response.getBody().message());
 
             verify(walletService, times(1)).addSaleToAsset(TOKEN, payload);
         }
 
         @Test
-        @DisplayName("Should not be able to add sale in wallet created when asset name does not exist")
-        void shouldNotBeAbleToAddSaleInWalletCreatedWhenAssetNameDoesNotExist() {
-
-            AddSaleRequestDto payload = getAddSaleRequestDto();
-
-            String message = "O ativo informado não existe";
-
-            when(walletService.addSaleToAsset(TOKEN, payload)).thenThrow(
-                    new ResourceNotFoundException(message)
-            );
-
-            ResourceNotFoundException exception = assertThrows(ResourceNotFoundException.class,
-                    () -> walletController.addSale(TOKEN, payload));
-
-            assertEquals(message, exception.getMessage());
-            verify(walletService, times(1)).addSaleToAsset(TOKEN, payload);
-        }
-
-        @Test
-        @DisplayName("Should not be able to add sale when user wallet does not exist")
-        void shouldNotBeAbleToAddSaleWhenUserWalletIsNotExist() {
-
-            AddSaleRequestDto payload = getAddSaleRequestDto();
-
-            String message = "Carteira não encontrada para o usuário informado";
-
-            when(walletService.addSaleToAsset(TOKEN, payload)).thenThrow(
-                    new ResourceNotFoundException(message)
-            );
-
-            ResourceNotFoundException exception = assertThrows(ResourceNotFoundException.class,
-                    () -> walletController.addSale(TOKEN, payload));
-
-            assertEquals(message, exception.getMessage());
-            verify(walletService, times(1)).addSaleToAsset(TOKEN, payload);
-        }
-
-        @Test
-        @DisplayName("Should not be able to add sale in wallet created when asset does not belong user wallet")
-        void shouldNotBeAbleToAddSaleInWalletCreatedWhenAssetIsDoesNotUserBelongToUserWallet() {
-
-            AddSaleRequestDto payload = getAddSaleRequestDto();
-
-            String message = "O ativo informado não existe na carteira";
-
-            when(walletService.addSaleToAsset(TOKEN, payload)).thenThrow(
-                    new BadRequestException(message)
-            );
-
-            BadRequestException exception = assertThrows(BadRequestException.class,
-                    () -> walletController.addSale(TOKEN, payload));
-
-            assertEquals(message, exception.getMessage());
-            verify(walletService, times(1)).addSaleToAsset(TOKEN, payload);
-        }
-
-        @Test
-        @DisplayName("Should not be able to add sale in wallet created when quota amount is less than sale amount")
-        void shouldNotBeAbleToAddSaleInWalletCreatedWhenQuotaAmountIsLessThanSaleAmount() {
-
-            AddSaleRequestDto payload = getAddSaleRequestDto();
-
-            String message = "A quantidade de cota do ativo não pode ser negativa";
-
-            when(walletService.addSaleToAsset(TOKEN, payload)).thenThrow(
-                    new BadRequestException(message)
-            );
-
-            BadRequestException exception = assertThrows(BadRequestException.class,
-                    () -> walletController.addSale(TOKEN, payload));
-
-            assertEquals(message, exception.getMessage());
-            verify(walletService, times(1)).addSaleToAsset(TOKEN, payload);
-        }
-
-        @Test
-        @DisplayName("Should not be able to add sale in wallet created with empty asset name in payload")
-        void shouldNotBeAbleToAddSaleInWalletCreatedWithEmptyAssetNameInPayload() {
+        @DisplayName("Should not be able to add sale of asset from wallet with empty asset name in payload")
+        void shouldNotBeAbleToAddSaleOfAssetFromWalletWithEmptyAssetNameInPayload() {
 
             AddSaleRequestDto invalidPayload = new AddSaleRequestDto(
                     "",
@@ -601,8 +286,8 @@ public class WalletControllerUnitTest {
         }
 
         @Test
-        @DisplayName("Should not be able to add sale in wallet create with invalid payload")
-        void shouldNotBeAbleToAddSaleInWalletCreatedWithInvalidPayload() {
+        @DisplayName("Should not be able to add sale of asset from wallet create with invalid payload")
+        void shouldNotBeAbleToAddSaleOfAssetFromWalletWithInvalidPayload() {
 
             AddSaleRequestDto invalidPayload = new AddSaleRequestDto(
                     "AB11",
@@ -619,14 +304,32 @@ public class WalletControllerUnitTest {
             assertTrue(violations.stream().anyMatch(v -> v.getMessage().equals("O preço da venda deve ser maior que zero")));
             assertTrue(violations.stream().anyMatch(v -> v.getMessage().equals("A data da venda não pode ser no futuro")));
         }
+    }
 
-        private static @NotNull AddSaleRequestDto getAddSaleRequestDto() {
-            return new AddSaleRequestDto(
-                    "ABCD11",
-                    100,
-                    BigDecimal.valueOf(50.00),
-                    Instant.now().minus(Duration.ofDays(1))
+    @Nested
+    class AddManySalesByCSV {
+
+        @Test
+        @DisplayName("Should be able to add many sales of asset to wallet by using file")
+        void shouldBeAbleToAddManySalesOfAssetToWalletByUsingFile() {
+
+            String csvContent = "asset_name,date,amount,price,quota_value\n" +
+                    "ABCD11,01/01/2024,10,28.51,28.51";
+
+            MultipartFile file = new MockMultipartFile(
+                    "sales",
+                    "sales.csv",
+                    "text/csv",
+                    csvContent.getBytes()
             );
+
+            ResponseEntity<WallerSuccessResponseDto> response = walletController.addManySalesByCSV(TOKEN, file);
+
+            assertNotNull(response);
+            assertEquals(HttpStatus.OK, response.getStatusCode());
+            assertNotNull(response.getBody());
+
+            verify(walletService, times(1)).addAllSalesToAssetByFile(TOKEN, file);
         }
     }
 
@@ -634,21 +337,16 @@ public class WalletControllerUnitTest {
     class UpdateSale {
 
         @Test
-        @DisplayName("Should be able to update sale in wallet created with valid payload")
-        void shouldBeAbleToUpdateSaleInWalletCreatedWithValidPayload() {
+        @DisplayName("Should be able to update sale of asset from wallet with valid payload")
+        void shouldBeAbleToUpdateSaleOfAssetFromWalletWithValidPayload() {
 
-            UpdateSaleRequestDto payload = getUpdateSaleRequestDto();
+            UpdateSaleRequestDto payload = new UpdateSaleRequestDto(
+                    100,
+                    BigDecimal.valueOf(50.00),
+                    Instant.now().minus(Duration.ofDays(1))
+            );
 
-            String message = "A compra saleId do ativo ABCD11 foi atualizada com sucesso";
-
-            when(walletService.updateSaleToAssetBySaleId(
-                    TOKEN,
-                    "ABCD11",
-                    "saleId",
-                    payload
-            )).thenReturn(message);
-
-            ResponseEntity<UpdateWalletResponseDto> response = walletController.updateSale(
+            ResponseEntity<WallerSuccessResponseDto> response = walletController.updateSale(
                     TOKEN,
                     "ABCD11",
                     "saleId",
@@ -658,7 +356,6 @@ public class WalletControllerUnitTest {
             assertNotNull(response);
             assertEquals(HttpStatus.OK, response.getStatusCode());
             assertNotNull(response.getBody());
-            assertEquals(message, response.getBody().message());
 
             verify(walletService, times(1)).updateSaleToAssetBySaleId(
                     TOKEN,
@@ -669,172 +366,8 @@ public class WalletControllerUnitTest {
         }
 
         @Test
-        @DisplayName("Should not be able to update sale in wallet created with null payload")
-        void shouldNotBeAbleToAddPurchaseInWalletCreatedWithEmptyPayload() {
-
-            UpdateSaleRequestDto payload = new UpdateSaleRequestDto(
-                    null,
-                    null,
-                    null
-            );
-
-            String message = "Não há informações de compra para serem atualizadas";
-
-            when(walletService.updateSaleToAssetBySaleId(
-                    TOKEN,
-                    "ABCD11",
-                    "saleId",
-                    payload)
-            ).thenThrow(
-                    new BadRequestException(message)
-            );
-
-            BadRequestException exception = assertThrows(BadRequestException.class,
-                    () -> walletController.updateSale(TOKEN,
-                            "ABCD11",
-                            "saleId",
-                            payload));
-
-            assertEquals(message, exception.getMessage());
-            verify(walletService, times(1)).updateSaleToAssetBySaleId(
-                    TOKEN,
-                    "ABCD11",
-                    "saleId",
-                    payload
-            );
-        }
-
-        @Test
-        @DisplayName("Should not be able to update sale in wallet created when asset name does not exist")
-        void shouldNotBeAbleToAddPurchaseInWalletCreatedWhenAssetNameDoesNotExist() {
-
-            UpdateSaleRequestDto payload = getUpdateSaleRequestDto();
-
-            String message = "O ativo informado não existe";
-
-            when(walletService.updateSaleToAssetBySaleId(
-                    TOKEN,
-                    "ABCD11",
-                    "saleId",
-                    payload)
-            ).thenThrow(
-                    new ResourceNotFoundException(message)
-            );
-
-            ResourceNotFoundException exception = assertThrows(ResourceNotFoundException.class,
-                    () -> walletController.updateSale(TOKEN,
-                            "ABCD11",
-                            "saleId",
-                            payload));
-
-            assertEquals(message, exception.getMessage());
-            verify(walletService, times(1)).updateSaleToAssetBySaleId(
-                    TOKEN,
-                    "ABCD11",
-                    "saleId",
-                    payload
-            );
-        }
-
-        @Test
-        @DisplayName("Should not be able to update sale when user wallet does not exist")
-        void shouldNotBeAbleToUpdateSaleWhenUserWalletIsNotExist() {
-
-            UpdateSaleRequestDto payload = getUpdateSaleRequestDto();
-
-            String message = "Carteira não encontrada para o usuário informado";
-
-            when(walletService.updateSaleToAssetBySaleId(
-                    TOKEN,
-                    "ABCD11",
-                    "saleId",
-                    payload)
-            ).thenThrow(
-                    new ResourceNotFoundException(message)
-            );
-
-            ResourceNotFoundException exception = assertThrows(ResourceNotFoundException.class,
-                    () -> walletController.updateSale(TOKEN,
-                            "ABCD11",
-                            "saleId",
-                            payload));
-
-            assertEquals(message, exception.getMessage());
-            verify(walletService, times(1)).updateSaleToAssetBySaleId(
-                    TOKEN,
-                    "ABCD11",
-                    "saleId",
-                    payload
-            );
-        }
-
-        @Test
-        @DisplayName("Should not be able to update sale in wallet created when asset does not belong to user wallet")
-        void shouldNotBeAbleToUpdateSaleInWalletCreatedWhenAssetIsDoesNotBelongToUserWallet() {
-
-            UpdateSaleRequestDto payload = getUpdateSaleRequestDto();
-
-            String message = "O ativo informado não existe na carteira";
-
-            when(walletService.updateSaleToAssetBySaleId(
-                    TOKEN,
-                    "ABCD11",
-                    "saleId",
-                    payload)
-            ).thenThrow(
-                    new BadRequestException(message)
-            );
-
-            BadRequestException exception = assertThrows(BadRequestException.class,
-                    () -> walletController.updateSale(TOKEN,
-                            "ABCD11",
-                            "saleId",
-                            payload));
-
-            assertEquals(message, exception.getMessage());
-            verify(walletService, times(1)).updateSaleToAssetBySaleId(
-                    TOKEN,
-                    "ABCD11",
-                    "saleId",
-                    payload
-            );
-        }
-
-        @Test
-        @DisplayName("Should not be able to update sale in wallet created when sale does not belong to asset")
-        void shouldNotBeAbleToUpdateSaleInWalletCreatedWhenPurchaseIsDoesNotBelongAsset() {
-
-            UpdateSaleRequestDto payload = getUpdateSaleRequestDto();
-
-            String message = "Não existe compra com o ID informado";
-
-            when(walletService.updateSaleToAssetBySaleId(
-                    TOKEN,
-                    "ABCD11",
-                    "saleId",
-                    payload)
-            ).thenThrow(
-                    new ResourceNotFoundException(message)
-            );
-
-            ResourceNotFoundException exception = assertThrows(ResourceNotFoundException.class,
-                    () -> walletController.updateSale(TOKEN,
-                            "ABCD11",
-                            "saleId",
-                            payload));
-
-            assertEquals(message, exception.getMessage());
-            verify(walletService, times(1)).updateSaleToAssetBySaleId(
-                    TOKEN,
-                    "ABCD11",
-                    "saleId",
-                    payload
-            );
-        }
-
-        @Test
-        @DisplayName("Should not be able to update sale in wallet create with invalid payload")
-        void shouldNotBeAbleToUpdateSaleInWalletCreatedWithInvalidPayload() {
+        @DisplayName("Should not be able to update sale of asset from wallet create with invalid payload")
+        void shouldNotBeAbleToUpdateSaleOfAssetFromWalletWithInvalidPayload() {
 
             UpdateSaleRequestDto invalidPayload = new UpdateSaleRequestDto(
                     0,
@@ -849,12 +382,27 @@ public class WalletControllerUnitTest {
             assertTrue(violations.stream().anyMatch(v -> v.getMessage().equals("O preço da venda deve ser maior que zero")));
             assertTrue(violations.stream().anyMatch(v -> v.getMessage().equals("A data da venda não pode ser no futuro")));
         }
+    }
 
-        private static @NotNull UpdateSaleRequestDto getUpdateSaleRequestDto() {
-            return new UpdateSaleRequestDto(
-                    100,
-                    BigDecimal.valueOf(50.00),
-                    Instant.now().minus(Duration.ofDays(1))
+    @Nested
+    class RemoveSale {
+
+        @Test
+        @DisplayName("Should be able to remove sale of asset from wallet by saleId")
+        void shouldBeAbleToRemoveSaleOfAssetFromWalletBySaleId() {
+
+            ResponseEntity<WallerSuccessResponseDto> response = walletController.removeSale(
+                    TOKEN, "ABCD11", "saleId"
+            );
+
+            assertNotNull(response);
+            assertEquals(HttpStatus.OK, response.getStatusCode());
+            assertNotNull(response.getBody());
+
+            verify(walletService, times(1)).removeSaleToAssetBySaleId(
+                    TOKEN,
+                    "ABCD11",
+                    "saleId"
             );
         }
     }
