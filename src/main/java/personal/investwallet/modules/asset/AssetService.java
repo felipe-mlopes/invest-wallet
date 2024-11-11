@@ -5,6 +5,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 import personal.investwallet.exceptions.EmptyFileException;
 import personal.investwallet.exceptions.FileProcessingException;
+import personal.investwallet.exceptions.ResourceNotFoundException;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -67,6 +68,9 @@ public class AssetService {
     public String getAssetTypeByAssetName(String assetName) {
 
         AssetEntity asset = assetRepository.findByAssetName(assetName);
+
+        if (asset == null)
+            throw new ResourceNotFoundException("O ativo informado não existe");
 
         return asset.getAssetType();
     }
