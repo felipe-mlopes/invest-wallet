@@ -11,6 +11,7 @@ import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.web.multipart.MultipartFile;
 import personal.investwallet.exceptions.EmptyFileException;
 import personal.investwallet.exceptions.FileProcessingException;
+import personal.investwallet.exceptions.ResourceNotFoundException;
 
 import java.io.IOException;
 
@@ -104,6 +105,18 @@ public class AssetServiceUnitTest {
 
             String assetType = assetService.getAssetTypeByAssetName("ABCD11");
             assertEquals("fundos-imobiliarios", assetType);
+        }
+
+        @Test
+        @DisplayName("Should be able to get asset type by asset name when asset does not exist")
+        void shouldNotBeAbleToGetAssetTypeByAssetNameWhenAssetDoesNotExist() {
+
+            when(assetRepository.findByAssetName("ABCD11")).thenReturn(null);
+
+            ResourceNotFoundException exception = assertThrows(ResourceNotFoundException.class,
+                    () -> assetService.getAssetTypeByAssetName("ABCD11")
+            );
+            assertEquals("O ativo informado não existe", exception.getMessage());
         }
     }
 }
