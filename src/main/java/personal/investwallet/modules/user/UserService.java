@@ -67,15 +67,11 @@ public class UserService {
         Cache cache = cacheManager.getCache("verificationCodes");
 
         if (cache != null) {
-
             String cachedCode = cache.get(payload.email(), String.class);
 
             if (cachedCode != null && cachedCode.equals(payload.code())) {
-
                 userRepository.updateCheckedAsTrueByEmail(payload.email(), Instant.now());
-
                 cache.evict(payload.email());
-
                 return "Validação concluída com sucesso";
             } else {
                 throw new UnauthorizedException("O código informado não confere");

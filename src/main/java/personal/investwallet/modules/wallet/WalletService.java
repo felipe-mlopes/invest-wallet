@@ -42,10 +42,7 @@ public class WalletService {
     public String addAssetToWallet(String token, CreateAssetRequestDto payload) {
 
         String userId = tokenService.extractUserIdFromToken(token);
-        String assetType = verifyAssetNameExists(payload.assetName());
-
-        if (assetType == null)
-            throw new ResourceNotFoundException("O ativo informado não existe");
+        verifyAssetNameExists(payload.assetName());
 
         Optional<WalletEntity> wallet = walletRepository.findByUserId(userId);
 
@@ -113,10 +110,7 @@ public class WalletService {
                 List<InfoGenericDto> infoDtoList = entry.getValue();
 
                 // Verifica se o nome do ativo existe
-                String assetType = verifyAssetNameExists(assetName);
-
-                if (assetType == null)
-                    throw new ResourceNotFoundException("O ativo " + assetName + " informado não existe");
+                verifyAssetNameExists(assetName);
 
                 Asset asset = wallet.get().getAssets().getOrDefault(assetName, new Asset());
                 asset.setAssetName(assetName);
@@ -164,10 +158,7 @@ public class WalletService {
                 List<InfoGenericDto> infoDtoList = entry.getValue();
 
                 // Verifica se o nome do ativo existe
-                String assetType = verifyAssetNameExists(assetName);
-
-                if (assetType == null)
-                    throw new ResourceNotFoundException("O ativo " + assetName + " informado não existe");
+                verifyAssetNameExists(assetName);
 
                 Asset asset = new Asset(
                         assetName,
@@ -309,10 +300,7 @@ public class WalletService {
                 List<InfoGenericDto> infoDtoList = entry.getValue();
 
                 // Verifica se o nome do ativo existe
-                String assetType = verifyAssetNameExists(assetName);
-
-                if (assetType == null)
-                    throw new ResourceNotFoundException("O ativo " + assetName + " informado não existe");
+                verifyAssetNameExists(assetName);
 
                 Asset asset = wallet.get().getAssets().getOrDefault(assetName, new Asset());
                 asset.setAssetName(assetName);
@@ -364,10 +352,7 @@ public class WalletService {
                 List<InfoGenericDto> infoDtoList = entry.getValue();
 
                 // Verifica se o nome do ativo existe
-                String assetType = verifyAssetNameExists(assetName);
-
-                if (assetType == null)
-                    throw new ResourceNotFoundException("O ativo " + assetName + " informado não existe");
+                verifyAssetNameExists(assetName);
 
                 Asset asset = new Asset(
                         assetName,

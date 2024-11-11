@@ -83,19 +83,6 @@ class WalletServiceUnitTest {
         }
 
         @Test
-        @DisplayName("Should not be able to create a new wallet or add a new asset with an asset that does not exist")
-        void shouldNotBeAbleToCreateNewWalletOrAddNewAssetWithAnAssetThatDoesNotExist() {
-
-            CreateAssetRequestDto payload = getAssetsCreateRequestDto();
-
-            when(tokenService.extractUserIdFromToken(anyString())).thenReturn(USER_ID);
-            when(assetService.getAssetTypeByAssetName(payload.assetName())).thenReturn(null);
-
-            ResourceNotFoundException exception = assertThrows(ResourceNotFoundException.class, () -> walletService.addAssetToWallet(TOKEN, payload));
-            assertEquals("O ativo informado não existe", exception.getMessage());
-        }
-
-        @Test
         @DisplayName("Should not be able to add an existing asset to wallet")
         void shouldNotBeAbleToAddAnExistingAssetToWallet() {
 
@@ -335,21 +322,6 @@ class WalletServiceUnitTest {
             String message = "Os registros de compras foram cadastrados na carteira com sucesso" ;
 
             assertEquals(message, result);
-        }
-
-        @Test
-        @DisplayName("Should not be able to add all purchases to asset by file if asset does not exist")
-        void shouldNotBeAbleToAddAllPurchasesToAssetByFileIfAssetDoesNotExist() {
-
-            MultipartFile file = getMultipartFile();
-
-            when(tokenService.extractUserIdFromToken(TOKEN)).thenReturn(USER_ID);
-            when(assetService.getAssetTypeByAssetName(ASSET_NAME)).thenReturn(null);
-
-            ResourceNotFoundException exception = assertThrows(ResourceNotFoundException.class, () -> walletService.addAllPurchasesToAssetByFile(
-                    TOKEN, file
-            ));
-            assertEquals("O ativo " + ASSET_NAME + " informado não existe", exception.getMessage());
         }
     }
 
@@ -1033,21 +1005,6 @@ class WalletServiceUnitTest {
             String message = "Os registros de vendas foram cadastrados na carteira com sucesso" ;
 
             assertEquals(message, result);
-        }
-
-        @Test
-        @DisplayName("Should not be able to add all sales to asset by file if asset does not exist")
-        void shouldNotBeAbleToAddAllPurchasesToAssetByFileIfAssetDoesNotExist() {
-
-            MultipartFile file = getMultipartFile();
-
-            when(tokenService.extractUserIdFromToken(TOKEN)).thenReturn(USER_ID);
-            when(assetService.getAssetTypeByAssetName(ASSET_NAME)).thenReturn(null);
-
-            ResourceNotFoundException exception = assertThrows(ResourceNotFoundException.class, () -> walletService.addAllPurchasesToAssetByFile(
-                    TOKEN, file
-            ));
-            assertEquals("O ativo " + ASSET_NAME + " informado não existe", exception.getMessage());
         }
     }
 

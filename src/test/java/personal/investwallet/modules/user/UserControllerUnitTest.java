@@ -60,7 +60,7 @@ class UserControllerUnitTest {
                     "Password123"
             );
 
-            ResponseEntity<CreateUserResponseDto> response = userController.create(payload);
+            ResponseEntity<UserSuccessResponseDto> response = userController.create(payload);
 
             assertNotNull(response);
             assertEquals(HttpStatus.CREATED, response.getStatusCode());
@@ -118,7 +118,7 @@ class UserControllerUnitTest {
                     "ABC4"
             );
 
-            ResponseEntity<ValidateUserRespondeDto> response = userController.validate(payload);
+            ResponseEntity<UserSuccessResponseDto> response = userController.validate(payload);
 
             assertNotNull(response);
             assertEquals(HttpStatus.OK, response.getStatusCode());
@@ -170,7 +170,7 @@ class UserControllerUnitTest {
                     "test@example.com"
             );
 
-            ResponseEntity<RevalidateUserResponseDto> response = userController.revalidate(payload);
+            ResponseEntity<UserSuccessResponseDto> response = userController.revalidate(payload);
 
             assertNotNull(response);
             assertEquals(HttpStatus.OK, response.getStatusCode());
