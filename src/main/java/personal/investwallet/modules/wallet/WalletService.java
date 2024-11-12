@@ -453,26 +453,16 @@ public class WalletService {
     }
 
     private String getUserId(String token) {
-        String userId = tokenService.extractUserIdFromToken(token);
-
-        boolean isWalletExist = walletRepository.existsByUserId(userId);
-
-        if (!isWalletExist)
-            throw new ResourceNotFoundException("Nenhuma carteira foi localizada para esse usuário");
-
-        return userId;
+        return tokenService.extractUserIdFromToken(token);
     }
 
-    private String verifyAssetNameExists(String assetName) {
-        return assetService.getAssetTypeByAssetName(assetName);
+    private void verifyAssetNameExists(String assetName) {
+        assetService.getAssetTypeByAssetName(assetName);
     }
 
     private WalletEntity.Asset getAssetVerified(String assetName, String userId) {
 
-        String assetType = verifyAssetNameExists(assetName);
-
-        if (assetType == null)
-            throw new ResourceNotFoundException("O ativo informado não existe");
+        verifyAssetNameExists(assetName);
 
         WalletEntity wallet = walletRepository.findByUserId(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("Carteira não encontrada para o usuário informado"));
