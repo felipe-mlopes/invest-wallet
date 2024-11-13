@@ -10,9 +10,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.web.multipart.MultipartFile;
-import personal.investwallet.exceptions.BadRequestException;
-import personal.investwallet.exceptions.ConflictException;
-import personal.investwallet.exceptions.ResourceNotFoundException;
+import personal.investwallet.exceptions.*;
 import personal.investwallet.modules.asset.AssetService;
 import personal.investwallet.modules.wallet.dto.*;
 import personal.investwallet.security.TokenService;
@@ -117,7 +115,6 @@ class WalletServiceUnitTest {
             AddPurchaseRequestDto payload = getPurchasesInfoRequestDto();
 
             when(tokenService.extractUserIdFromToken(anyString())).thenReturn(USER_ID);
-            when(walletRepository.existsByUserId(USER_ID)).thenReturn(true);
             when(assetService.getAssetTypeByAssetName(payload.assetName())).thenReturn(ASSET_TYPE);
 
             WalletEntity wallet = new WalletEntity();
@@ -137,27 +134,12 @@ class WalletServiceUnitTest {
         }
 
         @Test
-        @DisplayName("Should not be able to add purchase to asset that does not exist")
-        void shouldNotBeAbleToAddPurchaseToAssetThatDoesNotExist() {
-
-            AddPurchaseRequestDto payload = getPurchasesInfoRequestDto();
-
-            when(tokenService.extractUserIdFromToken(anyString())).thenReturn(USER_ID);
-            when(walletRepository.existsByUserId(USER_ID)).thenReturn(true);
-            when(assetService.getAssetTypeByAssetName(payload.assetName())).thenReturn(null);
-
-            ResourceNotFoundException exception = assertThrows(ResourceNotFoundException.class, () -> walletService.addPurchaseToAsset(TOKEN, payload));
-            assertEquals("O ativo informado não existe", exception.getMessage());
-        }
-
-        @Test
         @DisplayName("Should not be able to add purchase to asset without having wallet created")
         void shouldNotBeAbleToAddPurchaseToAssetWithoutHavingWalletCreated() {
 
             AddPurchaseRequestDto payload = getPurchasesInfoRequestDto();
 
             when(tokenService.extractUserIdFromToken(anyString())).thenReturn(USER_ID);
-            when(walletRepository.existsByUserId(USER_ID)).thenReturn(true);
             when(assetService.getAssetTypeByAssetName(payload.assetName())).thenReturn(ASSET_TYPE);
             when(walletRepository.findByUserId(USER_ID)).thenReturn(Optional.empty());
 
@@ -172,7 +154,6 @@ class WalletServiceUnitTest {
             AddPurchaseRequestDto payload = getPurchasesInfoRequestDto();
 
             when(tokenService.extractUserIdFromToken(anyString())).thenReturn(USER_ID);
-            when(walletRepository.existsByUserId(USER_ID)).thenReturn(true);
             when(assetService.getAssetTypeByAssetName(payload.assetName())).thenReturn(ASSET_TYPE);
             when(walletRepository.findByUserId(USER_ID)).thenReturn(Optional.of(new WalletEntity()));
 
@@ -199,15 +180,7 @@ class WalletServiceUnitTest {
         @DisplayName("Should be able to create new wallet and add all purchases to asset by file")
         void shouldBeAbleToCreateNewWalletAndAddAllPurchasesToAssetByFile() {
 
-            String csvContent = "asset_name,date,amount,price,quota_value\n" +
-                    "ABCD11,01/01/2024,100,28.51,28.51";
-
-            MultipartFile file = new MockMultipartFile(
-                    "file",
-                    "purchase.csv",
-                    "text/csv",
-                    csvContent.getBytes()
-            );
+            MultipartFile file = getMultipartFile();
 
             when(tokenService.extractUserIdFromToken(TOKEN)).thenReturn(USER_ID);
             when(assetService.getAssetTypeByAssetName(ASSET_NAME)).thenReturn(ASSET_TYPE);
@@ -216,7 +189,7 @@ class WalletServiceUnitTest {
             ArgumentCaptor<WalletEntity> walletCaptor = ArgumentCaptor.forClass(WalletEntity.class);
             when(walletRepository.save(any(WalletEntity.class))).thenAnswer(i -> i.getArguments()[0]);
 
-            String result = walletService.addAllPurchasesToAssetByFile(TOKEN, file);
+            String result = walletService.addManyPurchasesToAssetByFile(TOKEN, file);
 
             verify(walletRepository).save(walletCaptor.capture());
 
@@ -226,15 +199,15 @@ class WalletServiceUnitTest {
             assertNotNull(savedAsset);
             assertEquals(USER_ID, savedWallet.getUserId());
             assertEquals(ASSET_NAME, savedAsset.getAssetName());
-            assertEquals(100, savedAsset.getQuotaAmount());
+            assertEquals(10, savedAsset.getQuotaAmount());
             assertEquals(1, savedAsset.getPurchasesInfo().size());
 
             WalletEntity.Asset.PurchasesInfo savedPurchase = savedAsset.getPurchasesInfo().get(0);
-            assertEquals(100, savedPurchase.getPurchaseAmount());
+            assertEquals(10, savedPurchase.getPurchaseAmount());
             assertEquals(BigDecimal.valueOf(28.51), savedPurchase.getPurchasePrice());
             assertEquals(BigDecimal.valueOf(28.51), savedPurchase.getPurchaseQuotaValue());
 
-            String message = "Uma carteira foi criada e os registros de vendas foram cadastrados com sucesso" ;
+            String message = "Uma carteira foi criada e os registros de compras foram cadastrados com sucesso" ;
 
             assertEquals(message, result);
         }
@@ -254,7 +227,7 @@ class WalletServiceUnitTest {
             ArgumentCaptor<WalletEntity> walletCaptor = ArgumentCaptor.forClass(WalletEntity.class);
             when(walletRepository.save(any(WalletEntity.class))).thenAnswer(i -> i.getArguments()[0]);
 
-            String result = walletService.addAllPurchasesToAssetByFile(TOKEN, file);
+            String result = walletService.addManyPurchasesToAssetByFile(TOKEN, file);
 
             verify(walletRepository).save(walletCaptor.capture());
 
@@ -281,11 +254,14 @@ class WalletServiceUnitTest {
         @DisplayName("Should be able to add all purchases to asset by file and skip duplicate purchase by date")
         void shouldBeAbleToAddAllPurchasesToAssetByFileInWalletAndSkipDuplicatePurchaseByDate() {
 
-            WalletEntity wallet = createWalletWithAssetAndSaleInfo();
+            WalletEntity wallet = new WalletEntity();
+            wallet.setUserId(USER_ID);
 
-            String csvContent = "asset_name,date,amount,price,quota_value\n" +
-                    "ABCD11,01/01/2024,100,28.51,28.51\n" +
-                    "ABCD11,01/01/2024,200,29.51,29.51";
+            String csvContent = """
+                    asset_name,date,amount,price,quota_value
+                    ABCD11,01/01/2024,100,28.51,28.51
+                    ABCD11,01/01/2024,200,29.51,29.51
+                    """;
 
             MultipartFile file = new MockMultipartFile(
                     "file",
@@ -301,7 +277,7 @@ class WalletServiceUnitTest {
             ArgumentCaptor<WalletEntity> walletCaptor = ArgumentCaptor.forClass(WalletEntity.class);
             when(walletRepository.save(any(WalletEntity.class))).thenAnswer(i -> i.getArguments()[0]);
 
-            String result = walletService.addAllPurchasesToAssetByFile(TOKEN, file);
+            String result = walletService.addManyPurchasesToAssetByFile(TOKEN, file);
 
             verify(walletRepository).save(walletCaptor.capture());
 
@@ -311,7 +287,7 @@ class WalletServiceUnitTest {
             assertNotNull(savedAsset);
             assertEquals(USER_ID, savedWallet.getUserId());
             assertEquals(ASSET_NAME, savedAsset.getAssetName());
-            assertEquals(120, savedAsset.getQuotaAmount());
+            assertEquals(100, savedAsset.getQuotaAmount());
             assertEquals(1, savedAsset.getPurchasesInfo().size());
 
             WalletEntity.Asset.PurchasesInfo savedPurchase = savedAsset.getPurchasesInfo().get(0);
@@ -322,6 +298,313 @@ class WalletServiceUnitTest {
             String message = "Os registros de compras foram cadastrados na carteira com sucesso" ;
 
             assertEquals(message, result);
+        }
+
+        @Test
+        @DisplayName("Should not be able to add many purchases to asset by file with null file")
+        void shouldNotBeAbleToAddManyPurchasesToAssetByFileWithNullFile() {
+
+            when(tokenService.extractUserIdFromToken(TOKEN)).thenReturn(USER_ID);
+
+            EmptyFileException exception = assertThrows(EmptyFileException.class, () -> walletService.addManyPurchasesToAssetByFile(
+                    TOKEN, null
+            ));
+            assertEquals("O arquivo não enviado ou não preenchido", exception.getMessage());
+        }
+
+        @Test
+        @DisplayName("Should not be able to add many purchases to asset by file with empty file")
+        void shouldNotBeAbleToAddManyPurchasesToAssetByFileWithEmptyFile() {
+
+            String emptyCsvContent = """
+                """;
+
+            MockMultipartFile invalidFile = new MockMultipartFile(
+                    "file",
+                    "file.csv",
+                    "text/csv",
+                    emptyCsvContent.getBytes()
+            );
+
+            when(tokenService.extractUserIdFromToken(TOKEN)).thenReturn(USER_ID);
+
+            EmptyFileException exception = assertThrows(EmptyFileException.class, () -> walletService.addManyPurchasesToAssetByFile(
+                    TOKEN, invalidFile
+            ));
+            assertEquals("O arquivo não enviado ou não preenchido", exception.getMessage());
+        }
+
+        @Test
+        @DisplayName("Should not be able to add many purchases to asset by file when filename is null")
+        void shouldNotBeAbleToAddManyPurchasesToAssetByFileWhenFilenameIsNull() {
+
+            String csvContent = """
+                asset_name,date,amount,price,quota_value
+                ABCD11,01/01/2024,10,28.51,28.51
+                """;
+
+            MockMultipartFile invalidFile = new MockMultipartFile(
+                    "file",
+                    null,
+                    "text/csv",
+                    csvContent.getBytes()
+            );
+
+            when(tokenService.extractUserIdFromToken(TOKEN)).thenReturn(USER_ID);
+
+            InvalidFileFormatException exception = assertThrows(InvalidFileFormatException.class, () -> walletService.addManyPurchasesToAssetByFile(
+                    TOKEN, invalidFile
+            ));
+            assertEquals("O arquivo deve ser um CSV válido", exception.getMessage());
+        }
+
+        @Test
+        @DisplayName("Should not be able to add many purchases to asset by file when file format is different from csv")
+        void shouldNotBeAbleToAddManyPurchasesToAssetByFileWhenFileFormatIsDifferentFromCsv() {
+
+            String csvContent = """
+                asset_name,date,amount,price,quota_value
+                ABCD11,01/01/2024,10,28.51,28.51
+                """;
+
+            MockMultipartFile invalidFile = new MockMultipartFile(
+                    "file",
+                    "file.txt",
+                    "text/plain",
+                    csvContent.getBytes()
+            );
+
+            when(tokenService.extractUserIdFromToken(TOKEN)).thenReturn(USER_ID);
+
+            InvalidFileFormatException exception = assertThrows(InvalidFileFormatException.class, () -> walletService.addManyPurchasesToAssetByFile(
+                    TOKEN, invalidFile
+            ));
+            assertEquals("O arquivo deve ser um CSV válido", exception.getMessage());
+        }
+
+        @Test
+        @DisplayName("Should not be able to add many purchases to asset by file when header contains an invalid column quantity")
+        void shouldNotBeAbleToAddManyPurchasesToAssetByFileWhenHeaderContainsAnInvalidColumnQuantity() {
+
+            String invalidHeaderContent = """
+                asset_name,date,amount,price
+                ABCD11,01/01/2024,10,28.51,28.51
+                """;
+
+            MockMultipartFile invalidFile = new MockMultipartFile(
+                    "file",
+                    "file.csv",
+                    "text/csv",
+                    invalidHeaderContent.getBytes()
+            );
+
+            when(tokenService.extractUserIdFromToken(TOKEN)).thenReturn(USER_ID);
+
+            InvalidFileFormatException exception = assertThrows(InvalidFileFormatException.class, () -> walletService.addManyPurchasesToAssetByFile(
+                    TOKEN, invalidFile
+            ));
+            String message = "Formato de cabeçalho inválido. Esperado: asset_name, date, amount, price, quota_value";
+            assertEquals(message, exception.getMessage());
+        }
+
+        @Test
+        @DisplayName("Should not be able to add many purchases to asset by file when header contains an invalid column name")
+        void shouldNotBeAbleToAddManyPurchasesToAssetByFileWhenHeaderContainsAnInvalidColumnName() {
+
+            String invalidHeaderContent = """
+                invalid-column-name,date,amount,price,quota_value
+                ABCD11,01/01/2024,10,28.51,28.51
+                """;
+
+            MockMultipartFile invalidFile = new MockMultipartFile(
+                    "file",
+                    "file.csv",
+                    "text/csv",
+                    invalidHeaderContent.getBytes()
+            );
+
+            when(tokenService.extractUserIdFromToken(TOKEN)).thenReturn(USER_ID);
+
+            InvalidFileFormatException exception = assertThrows(InvalidFileFormatException.class, () -> walletService.addManyPurchasesToAssetByFile(
+                    TOKEN, invalidFile
+            ));
+            String message = "Coluna inválida no cabeçalho. Esperado: 'asset_name', Encontrado: 'invalid-column-name'";
+            assertEquals(message, exception.getMessage());
+        }
+
+        @Test
+        @DisplayName("Should not be able to add many purchases to asset by file when a row contains an invalid column quantity")
+        void shouldNotBeAbleToAddManyPurchasesToAssetByFileWhenARowContainsAnInvalidColumnQuantity() {
+
+            String invalidRowContent = """
+                asset_name,date,amount,price,quota_value
+                ABCD11,01/01/2024,28.51,28.51
+                """;
+
+            MockMultipartFile invalidFile = new MockMultipartFile(
+                    "file",
+                    "file.csv",
+                    "text/csv",
+                    invalidRowContent.getBytes()
+            );
+
+            when(tokenService.extractUserIdFromToken(TOKEN)).thenReturn(USER_ID);
+
+            InvalidFileFormatException exception = assertThrows(InvalidFileFormatException.class, () -> walletService.addManyPurchasesToAssetByFile(
+                    TOKEN, invalidFile
+            ));
+            String message = "A linha 2 possui número incorreto de colunas";
+            assertEquals(message, exception.getMessage());
+        }
+
+        @Test
+        @DisplayName("Should not be able to add many purchases to asset by file when a row contains an empty column name")
+        void shouldNotBeAbleToAddManyPurchasesToAssetByFileWhenARowContainsAnEmptyColumnName() {
+
+            String invalidRowContent = """
+                asset_name,date,amount,price,quota_value
+                ABCD11,01/01/2024, ,28.51,28.51
+                """;
+
+            MockMultipartFile invalidFile = new MockMultipartFile(
+                    "file",
+                    "file.csv",
+                    "text/csv",
+                    invalidRowContent.getBytes()
+            );
+
+            when(tokenService.extractUserIdFromToken(TOKEN)).thenReturn(USER_ID);
+
+            InvalidFileFormatException exception = assertThrows(InvalidFileFormatException.class, () -> walletService.addManyPurchasesToAssetByFile(
+                    TOKEN, invalidFile
+            ));
+            String message = "Na linha 2, a coluna 3 está vazia";
+            assertEquals(message, exception.getMessage());
+        }
+
+        @Test
+        @DisplayName("Should not be able to add many purchases to asset by file with invalid format date")
+        void shouldNotBeAbleToAddManySalesToAssetByFileWithInvalidFormatDate() {
+
+            String invalidFormatDateContent = """
+                asset_name,date,amount,price,quota_value
+                ABCD11,01-01-2024,10,28.51,2.851
+                """;
+
+            MockMultipartFile invalidFile = new MockMultipartFile(
+                    "file",
+                    "file.csv",
+                    "text/csv",
+                    invalidFormatDateContent.getBytes()
+            );
+
+            when(tokenService.extractUserIdFromToken(TOKEN)).thenReturn(USER_ID);
+
+            InvalidDateFormatException exception = assertThrows(InvalidDateFormatException.class, () -> walletService.addManySalesToAssetByFile(
+                    TOKEN, invalidFile
+            ));
+            String message = "Erro na linha 2, Data: formato de data inválido. Use dd/MM/yyyy";
+            assertEquals(message, exception.getMessage());
+        }
+
+        @Test
+        @DisplayName("Should not be able to add many purchases to asset by file when date entered is greater than current date")
+        void shouldNotBeAbleToAddManySalesToAssetByFileWhenDateEnteredIsGreaterThanCurrentDate() {
+
+            String invalidFormatDateContent = """
+                asset_name,date,amount,price,quota_value
+                ABCD11,01/01/2080,10,28.51,2.851
+                """;
+
+            MockMultipartFile invalidFile = new MockMultipartFile(
+                    "file",
+                    "file.csv",
+                    "text/csv",
+                    invalidFormatDateContent.getBytes()
+            );
+
+            when(tokenService.extractUserIdFromToken(TOKEN)).thenReturn(USER_ID);
+
+            InvalidDateFormatException exception = assertThrows(InvalidDateFormatException.class, () -> walletService.addManySalesToAssetByFile(
+                    TOKEN, invalidFile
+            ));
+            String message = "A data informada precisa ser menor ou igual a data corrente";
+            assertEquals(message, exception.getMessage());
+        }
+
+        @Test
+        @DisplayName("Should not be able to add many purchases to asset by file with invalid amount")
+        void shouldNotBeAbleToAddManySalesToAssetByFileWithInvalidAmount() {
+
+            String invalidFormatAmountContent = """
+                asset_name,date,amount,price,quota_value
+                ABCD11,01/01/2024,10Z,28.51,2.851
+                """;
+
+            MockMultipartFile invalidFile = new MockMultipartFile(
+                    "file",
+                    "file.csv",
+                    "text/csv",
+                    invalidFormatAmountContent.getBytes()
+            );
+
+            when(tokenService.extractUserIdFromToken(TOKEN)).thenReturn(USER_ID);
+
+            InvalidNumberFormatException exception = assertThrows(InvalidNumberFormatException.class, () -> walletService.addManySalesToAssetByFile(
+                    TOKEN, invalidFile
+            ));
+            String message = "Erro na linha 2, Quantidade: valor numérico inválido";
+            assertEquals(message, exception.getMessage());
+        }
+
+        @Test
+        @DisplayName("Should not be able to add many purchases to asset by file with invalid price")
+        void shouldNotBeAbleToAddManySalesToAssetByFileWithInvalidPrice() {
+
+            String invalidFormatPriceContent = """
+                asset_name,date,amount,price,quota_value
+                ABCD11,01/01/2024,10,2X.51,2.851
+                """;
+
+            MockMultipartFile invalidFile = new MockMultipartFile(
+                    "file",
+                    "file.csv",
+                    "text/csv",
+                    invalidFormatPriceContent.getBytes()
+            );
+
+            when(tokenService.extractUserIdFromToken(TOKEN)).thenReturn(USER_ID);
+
+            InvalidNumberFormatException exception = assertThrows(InvalidNumberFormatException.class, () -> walletService.addManySalesToAssetByFile(
+                    TOKEN, invalidFile
+            ));
+            String message = "Erro na linha 2, Preço: valor numérico inválido";
+            assertEquals(message, exception.getMessage());
+        }
+
+        @Test
+        @DisplayName("Should not be able to add many purchases to asset by file with invalid quota value")
+        void shouldNotBeAbleToAddManySalesToAssetByFileWithInvalidQuotaValue() {
+
+            String invalidFormatQuotaValueContent = """
+                asset_name,date,amount,price,quota_value
+                ABCD11,01/01/2024,10,28.51,2.X51
+                """;
+
+            MockMultipartFile invalidFile = new MockMultipartFile(
+                    "file",
+                    "file.csv",
+                    "text/csv",
+                    invalidFormatQuotaValueContent.getBytes()
+            );
+
+            when(tokenService.extractUserIdFromToken(TOKEN)).thenReturn(USER_ID);
+
+            InvalidNumberFormatException exception = assertThrows(InvalidNumberFormatException.class, () -> walletService.addManySalesToAssetByFile(
+                    TOKEN, invalidFile
+            ));
+            String message = "Erro na linha 2, Valor da cota: valor numérico inválido";
+            assertEquals(message, exception.getMessage());
         }
     }
 
@@ -338,7 +621,6 @@ class WalletServiceUnitTest {
             WalletEntity.Asset asset = wallet.getAssets().get(ASSET_NAME);
 
             when(tokenService.extractUserIdFromToken(anyString())).thenReturn(USER_ID);
-            when(walletRepository.existsByUserId(USER_ID)).thenReturn(true);
             when(assetService.getAssetTypeByAssetName(ASSET_NAME)).thenReturn(ASSET_TYPE);
             when(walletRepository.findByUserId(USER_ID)).thenReturn(Optional.of(wallet));
 
@@ -388,7 +670,6 @@ class WalletServiceUnitTest {
             WalletEntity.Asset asset = wallet.getAssets().get(ASSET_NAME);
 
             when(tokenService.extractUserIdFromToken(anyString())).thenReturn(USER_ID);
-            when(walletRepository.existsByUserId(USER_ID)).thenReturn(true);
             when(assetService.getAssetTypeByAssetName(ASSET_NAME)).thenReturn(ASSET_TYPE);
             when(walletRepository.findByUserId(USER_ID)).thenReturn(Optional.of(wallet));
 
@@ -423,7 +704,6 @@ class WalletServiceUnitTest {
             WalletEntity.Asset asset = wallet.getAssets().get(ASSET_NAME);
 
             when(tokenService.extractUserIdFromToken(anyString())).thenReturn(USER_ID);
-            when(walletRepository.existsByUserId(USER_ID)).thenReturn(true);
             when(assetService.getAssetTypeByAssetName(ASSET_NAME)).thenReturn(ASSET_TYPE);
             when(walletRepository.findByUserId(USER_ID)).thenReturn(Optional.of(wallet));
 
@@ -461,7 +741,6 @@ class WalletServiceUnitTest {
             WalletEntity.Asset asset = wallet.getAssets().get(ASSET_NAME);
 
             when(tokenService.extractUserIdFromToken(anyString())).thenReturn(USER_ID);
-            when(walletRepository.existsByUserId(USER_ID)).thenReturn(true);
             when(assetService.getAssetTypeByAssetName(ASSET_NAME)).thenReturn(ASSET_TYPE);
             when(walletRepository.findByUserId(USER_ID)).thenReturn(Optional.of(wallet));
 
@@ -512,7 +791,6 @@ class WalletServiceUnitTest {
             WalletEntity.Asset asset = wallet.getAssets().get(ASSET_NAME);
 
             when(tokenService.extractUserIdFromToken(anyString())).thenReturn(USER_ID);
-            when(walletRepository.existsByUserId(USER_ID)).thenReturn(true);
             when(assetService.getAssetTypeByAssetName(ASSET_NAME)).thenReturn(ASSET_TYPE);
             when(walletRepository.findByUserId(USER_ID)).thenReturn(Optional.of(wallet));
 
@@ -571,7 +849,6 @@ class WalletServiceUnitTest {
             wallet.setAssets(assetMap);
 
             when(tokenService.extractUserIdFromToken(anyString())).thenReturn(USER_ID);
-            when(walletRepository.existsByUserId(USER_ID)).thenReturn(true);
             when(assetService.getAssetTypeByAssetName(ASSET_NAME)).thenReturn(ASSET_TYPE);
             when(walletRepository.findByUserId(USER_ID)).thenReturn(Optional.of(wallet));
 
@@ -588,28 +865,11 @@ class WalletServiceUnitTest {
             UpdatePurchaseRequestDto payload = getPurchaseOnUpdateRequestDto();
 
             when(tokenService.extractUserIdFromToken(anyString())).thenReturn(USER_ID);
-            when(walletRepository.existsByUserId(USER_ID)).thenReturn(false);
 
             ResourceNotFoundException exception = assertThrows(ResourceNotFoundException.class, () -> walletService.updatePurchaseToAssetByPurchaseId(
                     TOKEN, ASSET_NAME, UUID.randomUUID().toString(), payload
             ));
-            assertEquals("Nenhuma carteira foi localizada para esse usuário", exception.getMessage());
-        }
-
-        @Test
-        @DisplayName("Should not be able to update asset's purchase info by purchaseId that does not exist")
-        void shouldNotBeAbleToUpdateInfoToAssetByPurchaseIdThatAssetDoesNotExist() {
-
-            UpdatePurchaseRequestDto payload = getPurchaseOnUpdateRequestDto();
-
-            when(tokenService.extractUserIdFromToken(anyString())).thenReturn(USER_ID);
-            when(walletRepository.existsByUserId(USER_ID)).thenReturn(true);
-            when(assetService.getAssetTypeByAssetName(ASSET_NAME)).thenReturn(null);
-
-            ResourceNotFoundException exception = assertThrows(ResourceNotFoundException.class, () -> walletService.updatePurchaseToAssetByPurchaseId(
-                    TOKEN, ASSET_NAME, UUID.randomUUID().toString(), payload
-            ));
-            assertEquals("O ativo informado não existe", exception.getMessage());
+            assertEquals("Carteira não encontrada para o usuário informado", exception.getMessage());
         }
 
         @Test
@@ -619,7 +879,6 @@ class WalletServiceUnitTest {
             UpdatePurchaseRequestDto payload = getPurchaseOnUpdateRequestDto();
 
             when(tokenService.extractUserIdFromToken(anyString())).thenReturn(USER_ID);
-            when(walletRepository.existsByUserId(USER_ID)).thenReturn(true);
             when(assetService.getAssetTypeByAssetName(ASSET_NAME)).thenReturn(ASSET_TYPE);
             when(walletRepository.findByUserId(USER_ID)).thenReturn(Optional.empty());
 
@@ -636,7 +895,6 @@ class WalletServiceUnitTest {
             UpdatePurchaseRequestDto payload = getPurchaseOnUpdateRequestDto();
 
             when(tokenService.extractUserIdFromToken(anyString())).thenReturn(USER_ID);
-            when(walletRepository.existsByUserId(USER_ID)).thenReturn(true);
             when(assetService.getAssetTypeByAssetName(ASSET_NAME)).thenReturn(ASSET_TYPE);
             when(walletRepository.findByUserId(USER_ID)).thenReturn(Optional.of(new WalletEntity()));
 
@@ -669,7 +927,6 @@ class WalletServiceUnitTest {
             ArgumentCaptor<Integer> quotaCaptor = ArgumentCaptor.forClass(Integer.class);
 
             when(tokenService.extractUserIdFromToken(anyString())).thenReturn(USER_ID);
-            when(walletRepository.existsByUserId(USER_ID)).thenReturn(true);
             when(assetService.getAssetTypeByAssetName(ASSET_NAME)).thenReturn(ASSET_TYPE);
             when(walletRepository.findByUserId(USER_ID)).thenReturn(Optional.of(wallet));
             doNothing().when(walletRepository).updatePurchaseInAssetByPurchaseId(
@@ -703,27 +960,12 @@ class WalletServiceUnitTest {
         void shouldNotBeAbleToRemovePurchaseToAssetByPurchaseIdIfTheUserDoesNotHaveAWallet() {
 
             when(tokenService.extractUserIdFromToken(TOKEN)).thenReturn(USER_ID);
-            when(walletRepository.existsByUserId(USER_ID)).thenReturn(false);
 
             ResourceNotFoundException exception = assertThrows(ResourceNotFoundException.class, () -> walletService.removePurchaseToAssetByPurchaseId(
                     TOKEN, ASSET_NAME, UUID.randomUUID().toString()
             ));
-            assertEquals("Nenhuma carteira foi localizada para esse usuário", exception.getMessage());
+            assertEquals("Carteira não encontrada para o usuário informado", exception.getMessage());
 
-        }
-
-        @Test
-        @DisplayName("Should not be able to remove asset's purchase info by purchaseId that does not exist")
-        void shouldNotBeAbleToRemovePurchaseInfoToAssetByPurchaseIdThatAssetDoesNotExist() {
-
-            when(tokenService.extractUserIdFromToken(anyString())).thenReturn(USER_ID);
-            when(walletRepository.existsByUserId(USER_ID)).thenReturn(true);
-            when(assetService.getAssetTypeByAssetName(ASSET_NAME)).thenReturn(null);
-
-            ResourceNotFoundException exception = assertThrows(ResourceNotFoundException.class, () -> walletService.removePurchaseToAssetByPurchaseId(
-                    TOKEN, ASSET_NAME, PURCHASE_ID
-            ));
-            assertEquals("O ativo informado não existe", exception.getMessage());
         }
 
         @Test
@@ -731,7 +973,6 @@ class WalletServiceUnitTest {
         void shouldNotBeAbleToRemovePurchaseInfoToAssetByPurchaseIdWithoutHavingWalletCreated() {
 
             when(tokenService.extractUserIdFromToken(anyString())).thenReturn(USER_ID);
-            when(walletRepository.existsByUserId(USER_ID)).thenReturn(true);
             when(assetService.getAssetTypeByAssetName(ASSET_NAME)).thenReturn(ASSET_TYPE);
             when(walletRepository.findByUserId(USER_ID)).thenReturn(Optional.empty());
 
@@ -748,7 +989,6 @@ class WalletServiceUnitTest {
             WalletEntity wallet = createEmptyWallet();
 
             when(tokenService.extractUserIdFromToken(anyString())).thenReturn(USER_ID);
-            when(walletRepository.existsByUserId(USER_ID)).thenReturn(true);
             when(assetService.getAssetTypeByAssetName(ASSET_NAME)).thenReturn(ASSET_TYPE);
             when(walletRepository.findByUserId(USER_ID)).thenReturn(Optional.of(wallet));
 
@@ -765,7 +1005,6 @@ class WalletServiceUnitTest {
             WalletEntity wallet = createWalletWithAssetAndPurchaseInfo();
 
             when(tokenService.extractUserIdFromToken(anyString())).thenReturn(USER_ID);
-            when(walletRepository.existsByUserId(USER_ID)).thenReturn(true);
             when(assetService.getAssetTypeByAssetName(ASSET_NAME)).thenReturn(ASSET_TYPE);
             when(walletRepository.findByUserId(USER_ID)).thenReturn(Optional.of(wallet));
 
@@ -792,7 +1031,6 @@ class WalletServiceUnitTest {
             wallet.getAssets().put(asset.getAssetName(), asset);
 
             when(tokenService.extractUserIdFromToken(anyString())).thenReturn(USER_ID);
-            when(walletRepository.existsByUserId(USER_ID)).thenReturn(true);
             when(assetService.getAssetTypeByAssetName(ASSET_NAME)).thenReturn(ASSET_TYPE);
             when(walletRepository.findByUserId(USER_ID)).thenReturn(Optional.of(wallet));
 
@@ -807,27 +1045,12 @@ class WalletServiceUnitTest {
         }
 
         @Test
-        @DisplayName("Should not be able to add sale to asset that does not exist")
-        void shouldNotBeAbleToAddSaleToAssetThatDoesNotExist() {
-
-            AddSaleRequestDto payload = getSalesInfoRequestDto();
-
-            when(tokenService.extractUserIdFromToken(anyString())).thenReturn(USER_ID);
-            when(walletRepository.existsByUserId(USER_ID)).thenReturn(true);
-            when(assetService.getAssetTypeByAssetName(ASSET_NAME)).thenReturn(null);
-
-            ResourceNotFoundException exception = assertThrows(ResourceNotFoundException.class, () -> walletService.addSaleToAsset(TOKEN, payload));
-            assertEquals("O ativo informado não existe", exception.getMessage());
-        }
-
-        @Test
         @DisplayName("Should not be able to add sale to asset without having wallet created")
         void shouldNotBeAbleToAddSaleToAssetWithoutHavingWalletCreated() {
 
             AddSaleRequestDto payload = getSalesInfoRequestDto();
 
             when(tokenService.extractUserIdFromToken(anyString())).thenReturn(USER_ID);
-            when(walletRepository.existsByUserId(USER_ID)).thenReturn(true);
             when(assetService.getAssetTypeByAssetName(ASSET_NAME)).thenReturn(ASSET_TYPE);
             when(walletRepository.findByUserId(USER_ID)).thenReturn(Optional.empty());
 
@@ -842,7 +1065,6 @@ class WalletServiceUnitTest {
             AddSaleRequestDto payload = getSalesInfoRequestDto();
 
             when(tokenService.extractUserIdFromToken(anyString())).thenReturn(USER_ID);
-            when(walletRepository.existsByUserId(USER_ID)).thenReturn(true);
             when(assetService.getAssetTypeByAssetName(ASSET_NAME)).thenReturn(ASSET_TYPE);
             when(walletRepository.findByUserId(USER_ID)).thenReturn(Optional.of(new WalletEntity()));
 
@@ -862,7 +1084,6 @@ class WalletServiceUnitTest {
             wallet.getAssets().put(asset.getAssetName(), asset);
 
             when(tokenService.extractUserIdFromToken(anyString())).thenReturn(USER_ID);
-            when(walletRepository.existsByUserId(USER_ID)).thenReturn(true);
             when(assetService.getAssetTypeByAssetName(ASSET_NAME)).thenReturn(ASSET_TYPE);
             when(walletRepository.findByUserId(USER_ID)).thenReturn(Optional.of(wallet));
 
@@ -884,22 +1105,83 @@ class WalletServiceUnitTest {
 }
 
     @Nested
-    class addAllSaleToAssetByFile {
+    class addManySaleToAssetByFile {
 
         @Test
-        @DisplayName("Should be able to create new wallet and add all sales to asset by file")
-        void shouldBeAbleToCreateNewWalletAndAddAllSalesToAssetByFile() {
+        @DisplayName("Should be able to add all sales to asset by file in wallet already created")
+        void shouldBeAbleToAddAllSalesToAssetByFileInWalletAlreadyCreated() {
+
+            WalletEntity wallet = createWalletWithAssetAndSaleInfo();
 
             MultipartFile file = getMultipartFile();
 
             when(tokenService.extractUserIdFromToken(TOKEN)).thenReturn(USER_ID);
             when(assetService.getAssetTypeByAssetName(ASSET_NAME)).thenReturn(ASSET_TYPE);
-            when(walletRepository.findByUserId(USER_ID)).thenReturn(Optional.empty());
+            when(walletRepository.findByUserId(USER_ID)).thenReturn(Optional.of(wallet));
 
             ArgumentCaptor<WalletEntity> walletCaptor = ArgumentCaptor.forClass(WalletEntity.class);
             when(walletRepository.save(any(WalletEntity.class))).thenAnswer(i -> i.getArguments()[0]);
 
-            String result = walletService.addAllSalesToAssetByFile(TOKEN, file);
+            String result = walletService.addManySalesToAssetByFile(TOKEN, file);
+
+            verify(walletRepository).save(walletCaptor.capture());
+
+            WalletEntity savedWallet = walletCaptor.getValue();
+            WalletEntity.Asset savedAsset = savedWallet.getAssets().get(ASSET_NAME);
+
+            assertNotNull(savedAsset);
+            assertEquals(USER_ID, savedWallet.getUserId());
+            assertEquals(ASSET_NAME, savedAsset.getAssetName());
+            assertEquals(10, savedAsset.getQuotaAmount());
+            assertEquals(2, savedAsset.getSalesInfo().size());
+
+            WalletEntity.Asset.SalesInfo savedSale = savedAsset.getSalesInfo().get(1);
+            assertEquals(10, savedSale.getSaleAmount());
+            assertEquals(BigDecimal.valueOf(28.51), savedSale.getSalePrice());
+            assertEquals(BigDecimal.valueOf(28.51), savedSale.getSaleQuotaValue());
+
+            String message = "Os registros de vendas foram cadastrados na carteira com sucesso" ;
+
+            assertEquals(message, result);
+        }
+
+        @Test
+        @DisplayName("Should be able to add many sales to asset by file with asset sales info empty in wallet")
+        void shouldBeAbleToAddManySalesToAssetByFileWithAssetSalesInfoEmptyInWallet() {
+
+            WalletEntity wallet = new WalletEntity();
+            wallet.setUserId(USER_ID);
+
+            Map<String, WalletEntity.Asset> assetMap = new HashMap<>();
+            WalletEntity.Asset asset = new WalletEntity.Asset();
+            asset.setAssetName(ASSET_NAME);
+            asset.setQuotaAmount(20);
+
+            List<WalletEntity.Asset.PurchasesInfo> purchasesInfo = new ArrayList<>();
+            WalletEntity.Asset.PurchasesInfo purchase = new WalletEntity.Asset.PurchasesInfo(
+                    PURCHASE_ID,
+                    20,
+                    BigDecimal.valueOf(25.78),
+                    BigDecimal.valueOf(25.78).divideToIntegralValue(BigDecimal.valueOf(5)),
+                    Instant.now().minus(30, ChronoUnit.MINUTES)
+            );
+
+            purchasesInfo.add(purchase);
+            asset.setPurchasesInfo(purchasesInfo);
+
+            assetMap.put(ASSET_NAME, asset);
+            wallet.setAssets(assetMap);
+
+            MultipartFile file = getMultipartFile();
+
+            when(tokenService.extractUserIdFromToken(TOKEN)).thenReturn(USER_ID);
+            when(assetService.getAssetTypeByAssetName(ASSET_NAME)).thenReturn(ASSET_TYPE);
+            when(walletRepository.findByUserId(USER_ID)).thenReturn(Optional.of(wallet));
+
+            ArgumentCaptor<WalletEntity> walletCaptor = ArgumentCaptor.forClass(WalletEntity.class);
+            when(walletRepository.save(any(WalletEntity.class))).thenAnswer(i -> i.getArguments()[0]);
+
+            String result = walletService.addManySalesToAssetByFile(TOKEN, file);
 
             verify(walletRepository).save(walletCaptor.capture());
 
@@ -917,44 +1199,6 @@ class WalletServiceUnitTest {
             assertEquals(BigDecimal.valueOf(28.51), savedSale.getSalePrice());
             assertEquals(BigDecimal.valueOf(28.51), savedSale.getSaleQuotaValue());
 
-            String message = "Uma carteira foi criada e os registros de vendas foram cadastrados com sucesso" ;
-
-            assertEquals(message, result);
-        }
-
-        @Test
-        @DisplayName("Should be able to add all sales to asset by file in wallet already created")
-        void shouldBeAbleToAddAllSalesToAssetByFileInWalletAlreadyCreated() {
-
-            WalletEntity wallet = createWalletWithAssetAndSaleInfo();
-
-            MultipartFile file = getMultipartFile();
-
-            when(tokenService.extractUserIdFromToken(TOKEN)).thenReturn(USER_ID);
-            when(assetService.getAssetTypeByAssetName(ASSET_NAME)).thenReturn(ASSET_TYPE);
-            when(walletRepository.findByUserId(USER_ID)).thenReturn(Optional.of(wallet));
-
-            ArgumentCaptor<WalletEntity> walletCaptor = ArgumentCaptor.forClass(WalletEntity.class);
-            when(walletRepository.save(any(WalletEntity.class))).thenAnswer(i -> i.getArguments()[0]);
-
-            String result = walletService.addAllSalesToAssetByFile(TOKEN, file);
-
-            verify(walletRepository).save(walletCaptor.capture());
-
-            WalletEntity savedWallet = walletCaptor.getValue();
-            WalletEntity.Asset savedAsset = savedWallet.getAssets().get(ASSET_NAME);
-
-            assertNotNull(savedAsset);
-            assertEquals(USER_ID, savedWallet.getUserId());
-            assertEquals(ASSET_NAME, savedAsset.getAssetName());
-            assertEquals(10, savedAsset.getQuotaAmount());
-            assertEquals(2, savedAsset.getSalesInfo().size());
-
-            WalletEntity.Asset.SalesInfo savedSale = savedAsset.getSalesInfo().get(1);
-            assertEquals(10, savedSale.getSaleAmount());
-            assertEquals(BigDecimal.valueOf(28.51), savedSale.getSalePrice());
-            assertEquals(BigDecimal.valueOf(28.51), savedSale.getSaleQuotaValue());
-
             String message = "Os registros de vendas foram cadastrados na carteira com sucesso" ;
 
             assertEquals(message, result);
@@ -966,9 +1210,11 @@ class WalletServiceUnitTest {
 
             WalletEntity wallet = createWalletWithAssetAndSaleInfo();
 
-            String csvContent = "asset_name,date,amount,price,quota_value\n" +
-                    "ABCD11,01/01/2024,10,28.51,28.51\n" +
-                    "ABCD11,01/01/2024,15,29.51,29.51";
+            String csvContent = """
+                    asset_name,date,amount,price,quota_value
+                    ABCD11,01/01/2024,10,28.51,28.51
+                    ABCD11,01/01/2024,15,29.51,29.51
+                    """;
 
             MultipartFile file = new MockMultipartFile(
                     "file",
@@ -984,7 +1230,7 @@ class WalletServiceUnitTest {
             ArgumentCaptor<WalletEntity> walletCaptor = ArgumentCaptor.forClass(WalletEntity.class);
             when(walletRepository.save(any(WalletEntity.class))).thenAnswer(i -> i.getArguments()[0]);
 
-            String result = walletService.addAllSalesToAssetByFile(TOKEN, file);
+            String result = walletService.addManySalesToAssetByFile(TOKEN, file);
 
             verify(walletRepository).save(walletCaptor.capture());
 
@@ -1005,6 +1251,357 @@ class WalletServiceUnitTest {
             String message = "Os registros de vendas foram cadastrados na carteira com sucesso" ;
 
             assertEquals(message, result);
+        }
+
+        @Test
+        @DisplayName("Should be able to add many sales to asset by file when wallet has not been created")
+        void shouldNotBeAbleToAddManySalesToAssetByFileWhenWalletHasNotBeenCreated() {
+
+            MultipartFile file = getMultipartFile();
+
+            when(tokenService.extractUserIdFromToken(TOKEN)).thenReturn(USER_ID);
+            when(walletRepository.findByUserId(USER_ID)).thenReturn(Optional.empty());
+
+            BadRequestException exception = assertThrows(BadRequestException.class, () -> walletService.addManySalesToAssetByFile(
+                    TOKEN, file
+            ));
+            assertEquals("Não é possível adicionar um venda a uma nova carteira antes de inserir uma compra", exception.getMessage());
+        }
+
+        @Test
+        @DisplayName("Should not be able to add many sales to asset by file with null file")
+        void shouldNotBeAbleToAddManySalesToAssetByFileWithNullFile() {
+
+            when(tokenService.extractUserIdFromToken(TOKEN)).thenReturn(USER_ID);
+
+            EmptyFileException exception = assertThrows(EmptyFileException.class, () -> walletService.addManySalesToAssetByFile(
+                    TOKEN, null
+            ));
+            assertEquals("O arquivo não enviado ou não preenchido", exception.getMessage());
+        }
+
+        @Test
+        @DisplayName("Should not be able to add many sales to asset by file with empty file")
+        void shouldNotBeAbleToAddManySalesToAssetByFileWithEmptyFile() {
+
+            String emptyCsvContent = """
+                """;
+
+            MockMultipartFile invalidFile = new MockMultipartFile(
+                    "file",
+                    "file.csv",
+                    "text/csv",
+                    emptyCsvContent.getBytes()
+            );
+
+            when(tokenService.extractUserIdFromToken(TOKEN)).thenReturn(USER_ID);
+
+            EmptyFileException exception = assertThrows(EmptyFileException.class, () -> walletService.addManySalesToAssetByFile(
+                    TOKEN, invalidFile
+            ));
+            assertEquals("O arquivo não enviado ou não preenchido", exception.getMessage());
+        }
+
+        @Test
+        @DisplayName("Should not be able to add many sales to asset by file when filename is null")
+        void shouldNotBeAbleToAddManySalesToAssetByFileWhenFilenameIsNull() {
+
+            String csvContent = """
+                asset_name,date,amount,price,quota_value
+                ABCD11,01/01/2024,10,28.51,28.51
+                """;
+
+            MockMultipartFile invalidFile = new MockMultipartFile(
+                    "file",
+                    null,
+                    "text/csv",
+                    csvContent.getBytes()
+            );
+
+            when(tokenService.extractUserIdFromToken(TOKEN)).thenReturn(USER_ID);
+
+            InvalidFileFormatException exception = assertThrows(InvalidFileFormatException.class, () -> walletService.addManySalesToAssetByFile(
+                    TOKEN, invalidFile
+            ));
+            assertEquals("O arquivo deve ser um CSV válido", exception.getMessage());
+        }
+
+        @Test
+        @DisplayName("Should not be able to add many sales to asset by file when file format is different from csv")
+        void shouldNotBeAbleToAddManySalesToAssetByFileWhenFileFormatIsDifferentFromCsv() {
+
+            String csvContent = """
+                asset_name,date,amount,price,quota_value
+                ABCD11,01/01/2024,10,28.51,28.51
+                """;
+
+            MockMultipartFile invalidFile = new MockMultipartFile(
+                    "file",
+                    "file.txt",
+                    "text/plain",
+                    csvContent.getBytes()
+            );
+
+            when(tokenService.extractUserIdFromToken(TOKEN)).thenReturn(USER_ID);
+
+            InvalidFileFormatException exception = assertThrows(InvalidFileFormatException.class, () -> walletService.addManySalesToAssetByFile(
+                    TOKEN, invalidFile
+            ));
+            assertEquals("O arquivo deve ser um CSV válido", exception.getMessage());
+        }
+
+        @Test
+        @DisplayName("Should not be able to add many sales to asset by file when header contains an invalid column quantity")
+        void shouldNotBeAbleToAddManySalesToAssetByFileWhenHeaderContainsAnInvalidColumnQuantity() {
+
+            String invalidHeaderContent = """
+                asset_name,date,amount,price
+                ABCD11,01/01/2024,10,28.51,28.51
+                """;
+
+            MockMultipartFile invalidFile = new MockMultipartFile(
+                    "file",
+                    "file.csv",
+                    "text/csv",
+                    invalidHeaderContent.getBytes()
+            );
+
+            when(tokenService.extractUserIdFromToken(TOKEN)).thenReturn(USER_ID);
+
+            InvalidFileFormatException exception = assertThrows(InvalidFileFormatException.class, () -> walletService.addManySalesToAssetByFile(
+                    TOKEN, invalidFile
+            ));
+            String message = "Formato de cabeçalho inválido. Esperado: asset_name, date, amount, price, quota_value";
+            assertEquals(message, exception.getMessage());
+        }
+
+        @Test
+        @DisplayName("Should not be able to add many sales to asset by file when header contains an invalid column name")
+        void shouldNotBeAbleToAddManySalesToAssetByFileWhenHeaderContainsAnInvalidColumnName() {
+
+            String invalidHeaderContent = """
+                invalid-column-name,date,amount,price,quota_value
+                ABCD11,01/01/2024,10,28.51,28.51
+                """;
+
+            MockMultipartFile invalidFile = new MockMultipartFile(
+                    "file",
+                    "file.csv",
+                    "text/csv",
+                    invalidHeaderContent.getBytes()
+            );
+
+            when(tokenService.extractUserIdFromToken(TOKEN)).thenReturn(USER_ID);
+
+            InvalidFileFormatException exception = assertThrows(InvalidFileFormatException.class, () -> walletService.addManySalesToAssetByFile(
+                    TOKEN, invalidFile
+            ));
+            String message = "Coluna inválida no cabeçalho. Esperado: 'asset_name', Encontrado: 'invalid-column-name'";
+            assertEquals(message, exception.getMessage());
+        }
+
+        @Test
+        @DisplayName("Should not be able to add many sales to asset by file when a row contains an invalid column quantity")
+        void shouldNotBeAbleToAddManySalesToAssetByFileWhenARowContainsAnInvalidColumnQuantity() {
+
+            String invalidRowContent = """
+                asset_name,date,amount,price,quota_value
+                ABCD11,01/01/2024,28.51,28.51
+                """;
+
+            MockMultipartFile invalidFile = new MockMultipartFile(
+                    "file",
+                    "file.csv",
+                    "text/csv",
+                    invalidRowContent.getBytes()
+            );
+
+            when(tokenService.extractUserIdFromToken(TOKEN)).thenReturn(USER_ID);
+
+            InvalidFileFormatException exception = assertThrows(InvalidFileFormatException.class, () -> walletService.addManySalesToAssetByFile(
+                    TOKEN, invalidFile
+            ));
+            String message = "A linha 2 possui número incorreto de colunas";
+            assertEquals(message, exception.getMessage());
+        }
+
+        @Test
+        @DisplayName("Should not be able to add many sales to asset by file when a row contains an empty column name")
+        void shouldNotBeAbleToAddManySalesToAssetByFileWhenARowContainsAnEmptyColumnName() {
+
+            String invalidRowContent = """
+                asset_name,date,amount,price,quota_value
+                ABCD11,01/01/2024, ,28.51,28.51
+                """;
+
+            MockMultipartFile invalidFile = new MockMultipartFile(
+                    "file",
+                    "file.csv",
+                    "text/csv",
+                    invalidRowContent.getBytes()
+            );
+
+            when(tokenService.extractUserIdFromToken(TOKEN)).thenReturn(USER_ID);
+
+            InvalidFileFormatException exception = assertThrows(InvalidFileFormatException.class, () -> walletService.addManySalesToAssetByFile(
+                    TOKEN, invalidFile
+            ));
+            String message = "Na linha 2, a coluna 3 está vazia";
+            assertEquals(message, exception.getMessage());
+        }
+
+        @Test
+        @DisplayName("Should not be able to add many sales to asset by file with invalid format date")
+        void shouldNotBeAbleToAddManySalesToAssetByFileWithInvalidFormatDate() {
+
+            String invalidFormatDateContent = """
+                asset_name,date,amount,price,quota_value
+                ABCD11,01-01-2024,10,28.51,2.851
+                """;
+
+            MockMultipartFile invalidFile = new MockMultipartFile(
+                    "file",
+                    "file.csv",
+                    "text/csv",
+                    invalidFormatDateContent.getBytes()
+            );
+
+            when(tokenService.extractUserIdFromToken(TOKEN)).thenReturn(USER_ID);
+
+            InvalidDateFormatException exception = assertThrows(InvalidDateFormatException.class, () -> walletService.addManySalesToAssetByFile(
+                    TOKEN, invalidFile
+            ));
+            String message = "Erro na linha 2, Data: formato de data inválido. Use dd/MM/yyyy";
+            assertEquals(message, exception.getMessage());
+        }
+
+        @Test
+        @DisplayName("Should not be able to add many sales to asset by file when date entered is greater than current date")
+        void shouldNotBeAbleToAddManySalesToAssetByFileWhenDateEnteredIsGreaterThanCurrentDate() {
+
+            String invalidFormatDateContent = """
+                asset_name,date,amount,price,quota_value
+                ABCD11,01/01/2080,10,28.51,2.851
+                """;
+
+            MockMultipartFile invalidFile = new MockMultipartFile(
+                    "file",
+                    "file.csv",
+                    "text/csv",
+                    invalidFormatDateContent.getBytes()
+            );
+
+            when(tokenService.extractUserIdFromToken(TOKEN)).thenReturn(USER_ID);
+
+            InvalidDateFormatException exception = assertThrows(InvalidDateFormatException.class, () -> walletService.addManySalesToAssetByFile(
+                    TOKEN, invalidFile
+            ));
+            String message = "A data informada precisa ser menor ou igual a data corrente";
+            assertEquals(message, exception.getMessage());
+        }
+
+        @Test
+        @DisplayName("Should not be able to add many sales to asset by file with invalid amount")
+        void shouldNotBeAbleToAddManySalesToAssetByFileWithInvalidAmount() {
+
+            String invalidFormatAmountContent = """
+                asset_name,date,amount,price,quota_value
+                ABCD11,01/01/2024,10Z,28.51,2.851
+                """;
+
+            MockMultipartFile invalidFile = new MockMultipartFile(
+                    "file",
+                    "file.csv",
+                    "text/csv",
+                    invalidFormatAmountContent.getBytes()
+            );
+
+            when(tokenService.extractUserIdFromToken(TOKEN)).thenReturn(USER_ID);
+
+            InvalidNumberFormatException exception = assertThrows(InvalidNumberFormatException.class, () -> walletService.addManySalesToAssetByFile(
+                    TOKEN, invalidFile
+            ));
+            String message = "Erro na linha 2, Quantidade: valor numérico inválido";
+            assertEquals(message, exception.getMessage());
+        }
+
+        @Test
+        @DisplayName("Should not be able to add many sales to asset by file with invalid price")
+        void shouldNotBeAbleToAddManySalesToAssetByFileWithInvalidPrice() {
+
+            String invalidFormatPriceContent = """
+                asset_name,date,amount,price,quota_value
+                ABCD11,01/01/2024,10,2X.51,2.851
+                """;
+
+            MockMultipartFile invalidFile = new MockMultipartFile(
+                    "file",
+                    "file.csv",
+                    "text/csv",
+                    invalidFormatPriceContent.getBytes()
+            );
+
+            when(tokenService.extractUserIdFromToken(TOKEN)).thenReturn(USER_ID);
+
+            InvalidNumberFormatException exception = assertThrows(InvalidNumberFormatException.class, () -> walletService.addManySalesToAssetByFile(
+                    TOKEN, invalidFile
+            ));
+            String message = "Erro na linha 2, Preço: valor numérico inválido";
+            assertEquals(message, exception.getMessage());
+        }
+
+        @Test
+        @DisplayName("Should not be able to add many sales to asset by file with invalid quota value")
+        void shouldNotBeAbleToAddManySalesToAssetByFileWithInvalidQuotaValue() {
+
+            String invalidFormatQuotaValueContent = """
+                asset_name,date,amount,price,quota_value
+                ABCD11,01/01/2024,10,28.51,2.X51
+                """;
+
+            MockMultipartFile invalidFile = new MockMultipartFile(
+                    "file",
+                    "file.csv",
+                    "text/csv",
+                    invalidFormatQuotaValueContent.getBytes()
+            );
+
+            when(tokenService.extractUserIdFromToken(TOKEN)).thenReturn(USER_ID);
+
+            InvalidNumberFormatException exception = assertThrows(InvalidNumberFormatException.class, () -> walletService.addManySalesToAssetByFile(
+                    TOKEN, invalidFile
+            ));
+            String message = "Erro na linha 2, Valor da cota: valor numérico inválido";
+            assertEquals(message, exception.getMessage());
+        }
+
+        @Test
+        @DisplayName("Should not be able to add all sales to asset by file with sale amount is greater than asset amount")
+        void shouldNotBeAbleToAddManySalesToAssetByFileWithSaleAmountIsGreaterThanAssetAmount() {
+
+            WalletEntity wallet = createWalletWithAssetAndSaleInfo();
+
+            String csvContent = """
+                asset_name,date,amount,price,quota_value
+                ABCD11,01/01/2024,1000,28.51,28.51
+                """;
+
+            MockMultipartFile invalidFile = new MockMultipartFile(
+                    "file",
+                    "file.csv",
+                    "text/csv",
+                    csvContent.getBytes()
+            );
+
+            when(tokenService.extractUserIdFromToken(TOKEN)).thenReturn(USER_ID);
+            when(assetService.getAssetTypeByAssetName(ASSET_NAME)).thenReturn(ASSET_TYPE);
+            when(walletRepository.findByUserId(USER_ID)).thenReturn(Optional.of(wallet));
+
+            BadRequestException exception = assertThrows(BadRequestException.class, () -> walletService.addManySalesToAssetByFile(
+                    TOKEN, invalidFile
+            ));
+            String message = "A quantidade de cotas do ativo não pode ser negativa";
+            assertEquals(message, exception.getMessage());
         }
     }
 
@@ -1039,7 +1636,6 @@ class WalletServiceUnitTest {
             wallet.setAssets(assetMap);
 
             when(tokenService.extractUserIdFromToken(anyString())).thenReturn(USER_ID);
-            when(walletRepository.existsByUserId(USER_ID)).thenReturn(true);
             when(assetService.getAssetTypeByAssetName(ASSET_NAME)).thenReturn(ASSET_TYPE);
             when(walletRepository.findByUserId(USER_ID)).thenReturn(Optional.of(wallet));
 
@@ -1107,7 +1703,6 @@ class WalletServiceUnitTest {
             wallet.setAssets(assetMap);
 
             when(tokenService.extractUserIdFromToken(anyString())).thenReturn(USER_ID);
-            when(walletRepository.existsByUserId(USER_ID)).thenReturn(true);
             when(assetService.getAssetTypeByAssetName(ASSET_NAME)).thenReturn(ASSET_TYPE);
             when(walletRepository.findByUserId(USER_ID)).thenReturn(Optional.of(wallet));
 
@@ -1160,7 +1755,6 @@ class WalletServiceUnitTest {
             wallet.setAssets(assetMap);
 
             when(tokenService.extractUserIdFromToken(anyString())).thenReturn(USER_ID);
-            when(walletRepository.existsByUserId(USER_ID)).thenReturn(true);
             when(assetService.getAssetTypeByAssetName(ASSET_NAME)).thenReturn(ASSET_TYPE);
             when(walletRepository.findByUserId(USER_ID)).thenReturn(Optional.of(wallet));
 
@@ -1213,7 +1807,6 @@ class WalletServiceUnitTest {
             wallet.setAssets(assetMap);
 
             when(tokenService.extractUserIdFromToken(anyString())).thenReturn(USER_ID);
-            when(walletRepository.existsByUserId(USER_ID)).thenReturn(true);
             when(assetService.getAssetTypeByAssetName(ASSET_NAME)).thenReturn(ASSET_TYPE);
             when(walletRepository.findByUserId(USER_ID)).thenReturn(Optional.of(wallet));
 
@@ -1282,7 +1875,6 @@ class WalletServiceUnitTest {
             wallet.setAssets(assetMap);
 
             when(tokenService.extractUserIdFromToken(anyString())).thenReturn(USER_ID);
-            when(walletRepository.existsByUserId(USER_ID)).thenReturn(true);
             when(assetService.getAssetTypeByAssetName(ASSET_NAME)).thenReturn(ASSET_TYPE);
             when(walletRepository.findByUserId(USER_ID)).thenReturn(Optional.of(wallet));
 
@@ -1341,7 +1933,6 @@ class WalletServiceUnitTest {
             wallet.setAssets(assetMap);
 
             when(tokenService.extractUserIdFromToken(anyString())).thenReturn(USER_ID);
-            when(walletRepository.existsByUserId(USER_ID)).thenReturn(true);
             when(assetService.getAssetTypeByAssetName(ASSET_NAME)).thenReturn(ASSET_TYPE);
             when(walletRepository.findByUserId(USER_ID)).thenReturn(Optional.of(wallet));
 
@@ -1358,28 +1949,11 @@ class WalletServiceUnitTest {
             UpdateSaleRequestDto payload = getSaleOnUpdateRequestDto();
 
             when(tokenService.extractUserIdFromToken(anyString())).thenReturn(USER_ID);
-            when(walletRepository.existsByUserId(USER_ID)).thenReturn(false);
 
             ResourceNotFoundException exception = assertThrows(ResourceNotFoundException.class, () -> walletService.updateSaleToAssetBySaleId(
                     TOKEN, ASSET_NAME, UUID.randomUUID().toString(), payload
             ));
-            assertEquals("Nenhuma carteira foi localizada para esse usuário", exception.getMessage());
-        }
-
-        @Test
-        @DisplayName("Should not be able to update info sale to asset that does not exist")
-        void shouldNotBeAbleToUpdateInfoToAssetBySaleIdThatAssetDoesNotExist() {
-
-            UpdateSaleRequestDto payload = getSaleOnUpdateRequestDto();
-
-            when(tokenService.extractUserIdFromToken(anyString())).thenReturn(USER_ID);
-            when(walletRepository.existsByUserId(USER_ID)).thenReturn(true);
-            when(assetService.getAssetTypeByAssetName(ASSET_NAME)).thenReturn(null);
-
-            ResourceNotFoundException exception = assertThrows(ResourceNotFoundException.class, () -> walletService.updateSaleToAssetBySaleId(
-                    TOKEN, ASSET_NAME, UUID.randomUUID().toString(), payload
-            ));
-            assertEquals("O ativo informado não existe", exception.getMessage());
+            assertEquals("Carteira não encontrada para o usuário informado", exception.getMessage());
         }
 
         @Test
@@ -1389,7 +1963,6 @@ class WalletServiceUnitTest {
             UpdateSaleRequestDto payload = getSaleOnUpdateRequestDto();
 
             when(tokenService.extractUserIdFromToken(anyString())).thenReturn(USER_ID);
-            when(walletRepository.existsByUserId(USER_ID)).thenReturn(true);
             when(assetService.getAssetTypeByAssetName(ASSET_NAME)).thenReturn(ASSET_TYPE);
             when(walletRepository.findByUserId(USER_ID)).thenReturn(Optional.empty());
 
@@ -1406,7 +1979,6 @@ class WalletServiceUnitTest {
             UpdateSaleRequestDto payload = getSaleOnUpdateRequestDto();
 
             when(tokenService.extractUserIdFromToken(anyString())).thenReturn(USER_ID);
-            when(walletRepository.existsByUserId(USER_ID)).thenReturn(true);
             when(assetService.getAssetTypeByAssetName(ASSET_NAME)).thenReturn(ASSET_TYPE);
             when(walletRepository.findByUserId(USER_ID)).thenReturn(Optional.of(new WalletEntity()));
 
@@ -1439,7 +2011,6 @@ class WalletServiceUnitTest {
             ArgumentCaptor<Integer> quotaCaptor = ArgumentCaptor.forClass(Integer.class);
 
             when(tokenService.extractUserIdFromToken(anyString())).thenReturn(USER_ID);
-            when(walletRepository.existsByUserId(USER_ID)).thenReturn(true);
             when(assetService.getAssetTypeByAssetName(ASSET_NAME)).thenReturn(ASSET_TYPE);
             when(walletRepository.findByUserId(USER_ID)).thenReturn(Optional.of(wallet));
             doNothing().when(walletRepository).updateSaleInAssetBySaleId(
@@ -1473,27 +2044,12 @@ class WalletServiceUnitTest {
         void shouldNotBeAbleToRemoveSaleToAssetBySaleIdIfTheUserDoesNotHaveAWallet() {
 
             when(tokenService.extractUserIdFromToken(TOKEN)).thenReturn(USER_ID);
-            when(walletRepository.existsByUserId(USER_ID)).thenReturn(false);
 
             ResourceNotFoundException exception = assertThrows(ResourceNotFoundException.class, () -> walletService.removeSaleToAssetBySaleId(
                     TOKEN, ASSET_NAME, UUID.randomUUID().toString()
             ));
-            assertEquals("Nenhuma carteira foi localizada para esse usuário", exception.getMessage());
+            assertEquals("Carteira não encontrada para o usuário informado", exception.getMessage());
 
-        }
-
-        @Test
-        @DisplayName("Should not be able to remove asset's sale info by saleId that does not exist")
-        void shouldNotBeAbleToRemoveSaleInfoToAssetBySaleIdThatAssetDoesNotExist() {
-
-            when(tokenService.extractUserIdFromToken(anyString())).thenReturn(USER_ID);
-            when(walletRepository.existsByUserId(USER_ID)).thenReturn(true);
-            when(assetService.getAssetTypeByAssetName(ASSET_NAME)).thenReturn(null);
-
-            ResourceNotFoundException exception = assertThrows(ResourceNotFoundException.class, () -> walletService.removeSaleToAssetBySaleId(
-                    TOKEN, ASSET_NAME, SALE_ID
-            ));
-            assertEquals("O ativo informado não existe", exception.getMessage());
         }
 
         @Test
@@ -1501,7 +2057,6 @@ class WalletServiceUnitTest {
         void shouldNotBeAbleToRemoveSaleInfoToAssetBySaleIdWithoutHavingWalletCreated() {
 
             when(tokenService.extractUserIdFromToken(anyString())).thenReturn(USER_ID);
-            when(walletRepository.existsByUserId(USER_ID)).thenReturn(true);
             when(assetService.getAssetTypeByAssetName(ASSET_NAME)).thenReturn(ASSET_TYPE);
             when(walletRepository.findByUserId(USER_ID)).thenReturn(Optional.empty());
 
@@ -1518,7 +2073,6 @@ class WalletServiceUnitTest {
             WalletEntity wallet = createEmptyWallet();
 
             when(tokenService.extractUserIdFromToken(anyString())).thenReturn(USER_ID);
-            when(walletRepository.existsByUserId(USER_ID)).thenReturn(true);
             when(assetService.getAssetTypeByAssetName(ASSET_NAME)).thenReturn(ASSET_TYPE);
             when(walletRepository.findByUserId(USER_ID)).thenReturn(Optional.of(wallet));
 
@@ -1535,7 +2089,6 @@ class WalletServiceUnitTest {
             WalletEntity wallet = createWalletWithAssetAndSaleInfo();
 
             when(tokenService.extractUserIdFromToken(anyString())).thenReturn(USER_ID);
-            when(walletRepository.existsByUserId(USER_ID)).thenReturn(true);
             when(assetService.getAssetTypeByAssetName(ASSET_NAME)).thenReturn(ASSET_TYPE);
             when(walletRepository.findByUserId(USER_ID)).thenReturn(Optional.of(wallet));
 
@@ -1610,12 +2163,14 @@ class WalletServiceUnitTest {
     }
 
     private static MultipartFile getMultipartFile() {
-        String csvContent = "asset_name,date,amount,price,quota_value\n" +
-                "ABCD11,01/01/2024,10,28.51,28.51";
+        String csvContent = """
+                asset_name,date,amount,price,quota_value
+                ABCD11,01/01/2024,10,28.51,28.51
+                """;
 
         return new MockMultipartFile(
                 "file",
-                "purchase.csv",
+                "file.csv",
                 "text/csv",
                 csvContent.getBytes()
         );
