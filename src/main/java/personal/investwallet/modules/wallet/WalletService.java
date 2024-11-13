@@ -22,6 +22,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.util.*;
 
 import static personal.investwallet.modules.wallet.WalletEntity.*;
@@ -96,7 +97,7 @@ public class WalletService {
     }
 
     @SneakyThrows
-    public String addAllPurchasesToAssetByFile(String token, MultipartFile file) {
+    public String addManyPurchasesToAssetByFile(String token, MultipartFile file) {
 
         String userId = tokenService.extractUserIdFromToken(token);
 
@@ -187,7 +188,7 @@ public class WalletService {
             }
 
             walletRepository.save(newWallet);
-            return "Uma carteira foi criada e os registros de vendas foram cadastrados com sucesso";
+            return "Uma carteira foi criada e os registros de compras foram cadastrados com sucesso";
         }
 
     }
@@ -286,7 +287,7 @@ public class WalletService {
     }
 
     @SneakyThrows
-    public String addAllSalesToAssetByFile(String token, MultipartFile file) {
+    public String addManySalesToAssetByFile(String token, MultipartFile file) {
 
         String userId = tokenService.extractUserIdFromToken(token);
 
@@ -333,7 +334,7 @@ public class WalletService {
                 }
 
                 if (totalAmount < 0)
-                    throw new ResourceNotFoundException("A quantidade de cotas do ativo não pode ser negativo");
+                    throw new BadRequestException("A quantidade de cotas do ativo não pode ser negativa");
 
 
                 asset.setQuotaAmount(totalAmount);
@@ -344,46 +345,8 @@ public class WalletService {
             return "Os registros de vendas foram cadastrados na carteira com sucesso";
 
         } else {
-            WalletEntity newWallet = new WalletEntity();
-            newWallet.setUserId(userId);
-
-            for (Map.Entry<String, List<InfoGenericDto>> entry : saleList.entrySet()) {
-                String assetName = entry.getKey();
-                List<InfoGenericDto> infoDtoList = entry.getValue();
-
-                // Verifica se o nome do ativo existe
-                verifyAssetNameExists(assetName);
-
-                Asset asset = new Asset(
-                        assetName,
-                        0,
-                        new ArrayList<>(),
-                        new ArrayList<>()
-                );
-
-                List<SalesInfo> salesInfoList = asset.getSalesInfo();
-                int totalAmount = asset.getQuotaAmount();
-
-                for (InfoGenericDto infoDto : infoDtoList) {
-                    SalesInfo salesInfo = new SalesInfo();
-                    salesInfo.setSaleId(infoDto.id());
-                    salesInfo.setSaleAmount(infoDto.amount());
-                    salesInfo.setSalePrice(infoDto.price());
-                    salesInfo.setSaleDate(infoDto.date());
-                    salesInfo.setSaleQuotaValue(infoDto.quotaValue());
-
-                    salesInfoList.add(salesInfo);
-                    totalAmount += infoDto.amount();
-                }
-
-                asset.setQuotaAmount(totalAmount);
-                newWallet.getAssets().put(assetName, asset);
-            }
-
-            walletRepository.save(newWallet);
-            return "Uma carteira foi criada e os registros de vendas foram cadastrados com sucesso";
+            throw new BadRequestException("Não é possível adicionar um venda a uma nova carteira antes de inserir uma compra");
         }
-
     }
 
     public String updateSaleToAssetBySaleId(
@@ -475,35 +438,63 @@ public class WalletService {
         return asset;
     }
 
-    private static Map<String, List<InfoGenericDto>> readCSVFile(MultipartFile file) throws IOException, CsvException {
-        Reader reader = new InputStreamReader(file.getInputStream());
+    private static Map<String, List<InfoGenericDto>> readCSVFile(MultipartFile file) {
 
-        CSVParser parser = new CSVParserBuilder().withSeparator(',').build();
-        CSVReader csvReader = new CSVReaderBuilder(reader).withCSVParser(parser).build();
+        try {
+            // Verifica se o arquivo está vazio ou em um formato inválido
+            validateFile(file);
 
-        List<String[]> rows = csvReader.readAll();
+            Reader reader = new InputStreamReader(file.getInputStream());
+
+            CSVParser parser = new CSVParserBuilder().withSeparator(',').build();
+            CSVReader csvReader = new CSVReaderBuilder(reader).withCSVParser(parser).build();
+
+            List<String[]> rows = csvReader.readAll();
+
+            // Verifica se cabeçalho segue o padrão desejado
+            validateHeader(rows.get(0));
+
+            // Remove o cabeçalho
+            rows.remove(0);
+
+            Map<String, List<InfoGenericDto>> groupedInfoByAssetName = processRows(rows);
+            csvReader.close();
+
+            return groupedInfoByAssetName;
+
+        } catch (IOException e) {
+            throw new FileProcessingException("Erro ao ler o arquivo CSV");
+        } catch (CsvException e) {
+            throw new InvalidFileFormatException("Erro ao processar o arquivo CSV");
+        }
+    }
+
+    private static Map<String, List<InfoGenericDto>> processRows(List<String[]> rows) {
+
         Map<String, List<InfoGenericDto>> groupedInfoByAssetName = new HashMap<>();
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
-        rows.remove(0);
-
-        rows.forEach(row -> {
+        for (int rowNum = 0; rowNum < rows.size(); rowNum++) {
+            String[] row = rows.get(rowNum);
             for (int i = 0; i < row.length; i++)
                 row[i] = row[i]
                         .replace(",", ".");
 
-            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+            // Verifica a quantidade colunas de cada linha
+            validateRowData(row, rowNum);
 
-            String assetName = row[0];
-            String date = row[1];
-            String amount = row[2];
-            String price = row[3];
-            String quotaValue = row[4];
+            String assetName = row[0].trim();
 
-            LocalDate localDate = LocalDate.parse(date, formatter);
-            Instant dateInstant = localDate.atStartOfDay(ZoneId.systemDefault()).toInstant();
-            int amountInt = Integer.parseInt(amount);
-            BigDecimal priceDecimal = new BigDecimal(price.trim());
-            BigDecimal quotaValueDecimal = new BigDecimal(quotaValue.trim());
+            LocalDate date = parseDate(row[1].trim(), formatter, rowNum);
+            Instant dateInstant = date.atStartOfDay(ZoneId.systemDefault()).toInstant();
+
+            // Verifica se data informada é menor ou igual a data corrente
+            validateDate(date);
+
+            int amountInt = parseInteger(row[2].trim(), rowNum);
+
+            BigDecimal priceDecimal = parseBigDecimal(row[3].trim(), "Preço", rowNum);
+            BigDecimal quotaValueDecimal = parseBigDecimal(row[4].trim(), "Valor da cota", rowNum);
 
             InfoGenericDto infoDto = new InfoGenericDto(
                     UUID.randomUUID().toString(),
@@ -514,12 +505,106 @@ public class WalletService {
             );
 
             groupedInfoByAssetName.computeIfAbsent(assetName, k -> new ArrayList<>()).add(infoDto);
-        });
-
-        csvReader.close();
+        }
 
         return groupedInfoByAssetName;
     }
 
+    private static void validateFile(MultipartFile file) {
+
+        if (file == null || file.isEmpty()) {
+            throw new EmptyFileException("O arquivo não enviado ou não preenchido");
+        }
+
+        String filename = file.getOriginalFilename();
+        if (!filename.toLowerCase().endsWith(".csv")) {
+            throw new InvalidFileFormatException("O arquivo deve ser um CSV válido");
+        }
+    }
+
+    private static void validateHeader(String[] header) {
+
+        String[] expectedHeaders = {
+                "asset_name", "date", "amount", "price", "quota_value"
+        };
+
+        if (header.length != expectedHeaders.length) {
+            throw new InvalidFileFormatException(
+                    "Formato de cabeçalho inválido. Esperado: " + String.join(", ", expectedHeaders)
+            );
+        }
+
+        for (int i = 0; i < expectedHeaders.length; i++) {
+            if (!header[i].trim().equalsIgnoreCase(expectedHeaders[i])) {
+                throw new InvalidFileFormatException(
+                        "Coluna inválida no cabeçalho. Esperado: '" + expectedHeaders[i] +
+                                "', Encontrado: '" + header[i].trim() + "'"
+                );
+            }
+        }
+    }
+
+    private static void validateRowData(String[] row, int rowNum) {
+
+        if (row.length != 5)
+            throw new InvalidFileFormatException(
+                    "A linha " + (rowNum + 2) + " possui número incorreto de colunas"
+            );
+
+
+        for (int i = 0; i < row.length; i++) {
+            if (row[i].trim().isEmpty()) {
+                throw new InvalidFileFormatException(
+                        "Na linha " + (rowNum + 2) + ", a coluna " + (i + 1) + " está vazia"
+                );
+            }
+        }
+    }
+
+    private static void validateDate(LocalDate date) {
+
+        int currentYear = LocalDate.now().getYear();
+
+        if (date.getYear() > currentYear)
+            throw new InvalidDateFormatException(
+                    "A data informada precisa ser menor ou igual a data corrente"
+            );
+    }
+
+    private static LocalDate parseDate(String dateStr, DateTimeFormatter formatter,
+                                       int rowNum) {
+
+        try {
+            return LocalDate.parse(dateStr.trim(), formatter);
+        } catch (DateTimeParseException e) {
+            throw new InvalidDateFormatException(
+                    "Erro na linha " + (rowNum + 2) + ", " + "Data" +
+                            ": formato de data inválido. Use dd/MM/yyyy"
+            );
+        }
+    }
+
+    private static Integer parseInteger(String value, int rowNum) {
+
+        try {
+            return Integer.parseInt(value);
+        } catch (NumberFormatException e) {
+            throw new InvalidNumberFormatException(
+                    "Erro na linha " + (rowNum + 2) + ", Quantidade: valor numérico inválido"
+            );
+        }
+    }
+
+    private static BigDecimal parseBigDecimal(String value, String fieldName, int rowNum) {
+
+        try {
+            return new BigDecimal(value.trim());
+        } catch (NumberFormatException e) {
+            throw new InvalidNumberFormatException(
+                    "Erro na linha " + (rowNum + 2) + ", " + fieldName +
+                            ": valor numérico inválido"
+            );
+        }
+    }
 }
 
