@@ -42,7 +42,7 @@ public class WalletController {
             MultipartFile file
     ) {
 
-        String result = walletService.addAllPurchasesToAssetByFile(token, file);
+        String result = walletService.addManyPurchasesToAssetByFile(token, file);
 
         return ResponseEntity.ok(new WallerSuccessResponseDto(result));
     }
@@ -94,7 +94,7 @@ public class WalletController {
             MultipartFile file
     ) {
 
-        String result = walletService.addAllSalesToAssetByFile(token, file);
+        String result = walletService.addManySalesToAssetByFile(token, file);
 
         return ResponseEntity.ok(new WallerSuccessResponseDto(result));
     }
