@@ -168,7 +168,7 @@ public class WalletControllerUnitTest {
             assertEquals(HttpStatus.OK, response.getStatusCode());
             assertNotNull(response.getBody());
 
-            verify(walletService, times(1)).addAllPurchasesToAssetByFile(TOKEN, file);
+            verify(walletService, times(1)).addManyPurchasesToAssetByFile(TOKEN, file);
         }
     }
 
@@ -329,7 +329,7 @@ public class WalletControllerUnitTest {
             assertEquals(HttpStatus.OK, response.getStatusCode());
             assertNotNull(response.getBody());
 
-            verify(walletService, times(1)).addAllSalesToAssetByFile(TOKEN, file);
+            verify(walletService, times(1)).addManySalesToAssetByFile(TOKEN, file);
         }
     }
 
