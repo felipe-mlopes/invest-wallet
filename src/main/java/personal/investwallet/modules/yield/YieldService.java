@@ -118,6 +118,7 @@ public class YieldService {
     }
 
     private static List<YieldInfoRequestDto> processRows(List<String[]> rows) {
+
         List<YieldInfoRequestDto> result = new ArrayList<>();
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
@@ -398,5 +399,4 @@ public class YieldService {
             );
         }
     }
-
 }
