@@ -13,6 +13,7 @@ import personal.investwallet.exceptions.*;
 import personal.investwallet.modules.asset.AssetService;
 import personal.investwallet.modules.webscraper.ScraperService;
 import personal.investwallet.modules.webscraper.dto.ScraperResponseDto;
+import personal.investwallet.modules.yield.dto.YieldRequestDto;
 import personal.investwallet.security.TokenService;
 
 import java.io.*;
@@ -82,7 +83,7 @@ public class YieldServiceUnitTest {
 
             ArgumentCaptor<YieldEntity> yieldCaptor = ArgumentCaptor.forClass(YieldEntity.class);
 
-            int result = yieldService.registerAllYieldsReceivedInPreviousMonthsByFile(TOKEN, file);
+            int result = yieldService.registerManyYieldsReceivedByCsv(TOKEN, file);
 
             verify(yieldRepository).save(yieldCaptor.capture());
             assertEquals(2, result);
@@ -108,11 +109,11 @@ public class YieldServiceUnitTest {
             existingEntity.setUserId(USER_ID);
 
             when(assetService.getAssetTypeByAssetName("ASSET1")).thenReturn("fundos-imobiliarios");
-            when(yieldRepository.findByUserId(USER_ID)).thenReturn(Optional.of(existingEntity));
+//            when(yieldRepository.findByUserId(USER_ID)).thenReturn(Optional.of(existingEntity));
 
             ArgumentCaptor<YieldEntity> yieldCaptor = ArgumentCaptor.forClass(YieldEntity.class);
 
-            int result = yieldService.registerAllYieldsReceivedInPreviousMonthsByFile(TOKEN, file);
+            int result = yieldService.registerManyYieldsReceivedByCsv(TOKEN, file);
 
             assertEquals(1, result);
             verify(yieldRepository).save(yieldCaptor.capture());
@@ -123,7 +124,7 @@ public class YieldServiceUnitTest {
         void shouldNotBeAbleToRegisterAllYieldsReceivedInPreviousMonthsByFileWithoutSendingFile() {
 
             EmptyFileException exception = assertThrows(EmptyFileException.class, () ->
-                    yieldService.registerAllYieldsReceivedInPreviousMonthsByFile(TOKEN, null));
+                    yieldService.registerManyYieldsReceivedByCsv(TOKEN, null));
 
             assertEquals("O arquivo não enviado ou não preenchido", exception.getMessage());
         }
@@ -140,7 +141,7 @@ public class YieldServiceUnitTest {
             );
 
             EmptyFileException exception = assertThrows(EmptyFileException.class, () ->
-                    yieldService.registerAllYieldsReceivedInPreviousMonthsByFile(TOKEN, file));
+                    yieldService.registerManyYieldsReceivedByCsv(TOKEN, file));
 
             assertEquals("O arquivo não enviado ou não preenchido", exception.getMessage());
         }
@@ -163,7 +164,7 @@ public class YieldServiceUnitTest {
             );
 
             InvalidFileFormatException exception = assertThrows(InvalidFileFormatException.class, () ->
-                    yieldService.registerAllYieldsReceivedInPreviousMonthsByFile(TOKEN, file));
+                    yieldService.registerManyYieldsReceivedByCsv(TOKEN, file));
 
             assertEquals("O arquivo deve ser um CSV válido", exception.getMessage());
         }
@@ -182,7 +183,7 @@ public class YieldServiceUnitTest {
             );
 
             InvalidFileFormatException exception = assertThrows(InvalidFileFormatException.class, () ->
-                    yieldService.registerAllYieldsReceivedInPreviousMonthsByFile(TOKEN, file));
+                    yieldService.registerManyYieldsReceivedByCsv(TOKEN, file));
 
             assertEquals("O arquivo deve ser um CSV válido", exception.getMessage());
         }
@@ -204,7 +205,7 @@ public class YieldServiceUnitTest {
             );
 
             InvalidFileFormatException exception = assertThrows(InvalidFileFormatException.class, () ->
-                    yieldService.registerAllYieldsReceivedInPreviousMonthsByFile(TOKEN, file));
+                    yieldService.registerManyYieldsReceivedByCsv(TOKEN, file));
 
             assertEquals(
                     "Formato de cabeçalho inválido. Esperado: Asset Name, Yield At, Base Date, Payment Date, Base Price, Income Value, Yield Value",
@@ -229,7 +230,7 @@ public class YieldServiceUnitTest {
             );
 
             InvalidFileFormatException exception = assertThrows(InvalidFileFormatException.class, () ->
-                    yieldService.registerAllYieldsReceivedInPreviousMonthsByFile(TOKEN, file));
+                    yieldService.registerManyYieldsReceivedByCsv(TOKEN, file));
 
             assertEquals(
                     "Coluna inválida no cabeçalho. Esperado: 'Asset Name', Encontrado: 'Asset Type'",
@@ -253,7 +254,7 @@ public class YieldServiceUnitTest {
             );
 
             EmptyFileException exception = assertThrows(EmptyFileException.class, () ->
-                    yieldService.registerAllYieldsReceivedInPreviousMonthsByFile(TOKEN, file));
+                    yieldService.registerManyYieldsReceivedByCsv(TOKEN, file));
 
             assertEquals(
                     "Arquivo é inválido por estar vazio ou com apenas o cabeçalho preenchido",
@@ -278,7 +279,7 @@ public class YieldServiceUnitTest {
             );
 
             InvalidFileFormatException exception = assertThrows(InvalidFileFormatException.class, () ->
-                    yieldService.registerAllYieldsReceivedInPreviousMonthsByFile(TOKEN, file));
+                    yieldService.registerManyYieldsReceivedByCsv(TOKEN, file));
 
             assertEquals(
                     "A linha 2 possui número incorreto de colunas",
@@ -303,7 +304,7 @@ public class YieldServiceUnitTest {
             );
 
             InvalidFileFormatException exception = assertThrows(InvalidFileFormatException.class, () ->
-                    yieldService.registerAllYieldsReceivedInPreviousMonthsByFile(TOKEN, file));
+                    yieldService.registerManyYieldsReceivedByCsv(TOKEN, file));
 
             assertEquals(
                     "Na linha 2, a coluna 4 está vazia",
@@ -328,7 +329,7 @@ public class YieldServiceUnitTest {
             );
 
             InvalidStringFormatException exception = assertThrows(InvalidStringFormatException.class, () ->
-                    yieldService.registerAllYieldsReceivedInPreviousMonthsByFile(TOKEN, file));
+                    yieldService.registerManyYieldsReceivedByCsv(TOKEN, file));
 
             assertEquals(
                     "O yieldAt deve conter apenas 6 caracteres contendo o ano (yyyy) e o mês (mm)",
@@ -353,7 +354,7 @@ public class YieldServiceUnitTest {
             );
 
             InvalidStringFormatException exception = assertThrows(InvalidStringFormatException.class, () ->
-                    yieldService.registerAllYieldsReceivedInPreviousMonthsByFile(TOKEN, file));
+                    yieldService.registerManyYieldsReceivedByCsv(TOKEN, file));
 
             assertEquals(
                     "O ano informado no YieldAt deve ter 4 caracteres e ser menor ou igual ao ano corrente",
@@ -378,7 +379,7 @@ public class YieldServiceUnitTest {
             );
 
             InvalidStringFormatException exception = assertThrows(InvalidStringFormatException.class, () ->
-                    yieldService.registerAllYieldsReceivedInPreviousMonthsByFile(TOKEN, file));
+                    yieldService.registerManyYieldsReceivedByCsv(TOKEN, file));
 
             assertEquals(
                     "O mês informado no YieldAt deve ter 2 caracteres e ser válido",
@@ -403,7 +404,7 @@ public class YieldServiceUnitTest {
             );
 
             InvalidDateFormatException exception = assertThrows(InvalidDateFormatException.class, () ->
-                    yieldService.registerAllYieldsReceivedInPreviousMonthsByFile(TOKEN, file));
+                    yieldService.registerManyYieldsReceivedByCsv(TOKEN, file));
 
             assertEquals(
                     "Erro na linha 2, Data Base: formato de data inválido. Use dd/MM/yyyy",
@@ -428,7 +429,7 @@ public class YieldServiceUnitTest {
             );
 
             InvalidDateFormatException exception = assertThrows(InvalidDateFormatException.class, () ->
-                    yieldService.registerAllYieldsReceivedInPreviousMonthsByFile(TOKEN, file));
+                    yieldService.registerManyYieldsReceivedByCsv(TOKEN, file));
 
             assertEquals(
                     "A data de pagamento precisa ser maior que a data base de cálculo do dividendo",
@@ -453,7 +454,7 @@ public class YieldServiceUnitTest {
             );
 
             InvalidDateFormatException exception = assertThrows(InvalidDateFormatException.class, () ->
-                    yieldService.registerAllYieldsReceivedInPreviousMonthsByFile(TOKEN, file));
+                    yieldService.registerManyYieldsReceivedByCsv(TOKEN, file));
 
             assertEquals(
                     "O ano da data base e/ou da data de pagamento precisa ser menor ou igual a ano corrente",
@@ -478,7 +479,7 @@ public class YieldServiceUnitTest {
             );
 
             InvalidNumberFormatException exception = assertThrows(InvalidNumberFormatException.class, () ->
-                    yieldService.registerAllYieldsReceivedInPreviousMonthsByFile(TOKEN, file));
+                    yieldService.registerManyYieldsReceivedByCsv(TOKEN, file));
 
             assertEquals(
                     "Erro na linha 2, Preço Base: valor numérico inválido",
@@ -503,7 +504,7 @@ public class YieldServiceUnitTest {
             );
 
             InvalidNumberFormatException exception = assertThrows(InvalidNumberFormatException.class, () ->
-                    yieldService.registerAllYieldsReceivedInPreviousMonthsByFile(TOKEN, file));
+                    yieldService.registerManyYieldsReceivedByCsv(TOKEN, file));
 
             assertEquals(
                     "Erro na linha 2: For input string: \"20X3\"",
@@ -530,7 +531,7 @@ public class YieldServiceUnitTest {
             when(tokenService.extractUserIdFromToken(TOKEN)).thenReturn(USER_ID);
             when(assetService.getAssetTypeByAssetName("ASSET1")).thenReturn(null);
 
-            ResourceNotFoundException exception = assertThrows(ResourceNotFoundException.class, () -> yieldService.registerAllYieldsReceivedInPreviousMonthsByFile(
+            ResourceNotFoundException exception = assertThrows(ResourceNotFoundException.class, () -> yieldService.registerManyYieldsReceivedByCsv(
                     TOKEN, file
             ));
             assertEquals("O ativo ASSET1 informado não existe.", exception.getMessage());
@@ -544,7 +545,7 @@ public class YieldServiceUnitTest {
             lenient().when(mockFile.getContentType()).thenReturn("text/csv");
             when(mockFile.getInputStream()).thenThrow(IOException.class);
 
-            FileProcessingException exception = assertThrows(FileProcessingException.class, () -> yieldService.registerAllYieldsReceivedInPreviousMonthsByFile(
+            FileProcessingException exception = assertThrows(FileProcessingException.class, () -> yieldService.registerManyYieldsReceivedByCsv(
                     TOKEN, mockFile
             ));
             assertEquals("Erro ao ler o arquivo CSV", exception.getMessage());
@@ -557,11 +558,7 @@ public class YieldServiceUnitTest {
         @Test
         void shouldBeAbleToRegisterAllYieldsReceivedInTheMonth() {
 
-            List<Object> assets = new ArrayList<>();
-            Map<String, Object> asset1 = new HashMap<>();
-            asset1.put("assetName", "ASSET1");
-            asset1.put("assetQuotaAmount", 100);
-            assets.add(asset1);
+            List<YieldRequestDto> assets = new ArrayList<>();
 
             when(assetService.getAssetTypeByAssetName("ASSET1")).thenReturn("fundos-imobiliarios");
 
@@ -578,9 +575,9 @@ public class YieldServiceUnitTest {
 
             when(tokenService.extractUserIdFromToken(TOKEN)).thenReturn(USER_ID);
             when(scraperService.yieldScraping("fundos-imobiliarios", "ASSET1")).thenReturn(scraperResponseDto);
-            when(yieldRepository.findByUserId(USER_ID)).thenReturn(Optional.empty());
+//            when(yieldRepository.findByUserId(USER_ID)).thenReturn(Optional.empty());
 
-            yieldService.registerAllYieldsReceivedInTheMonth(TOKEN, assets);
+            yieldService.registerManyYieldsReceived(TOKEN, assets);
 
             verify(yieldRepository).save(any(YieldEntity.class));
         }
