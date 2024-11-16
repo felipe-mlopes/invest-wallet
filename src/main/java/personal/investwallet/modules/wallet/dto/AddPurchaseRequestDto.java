@@ -16,7 +16,7 @@ public record AddPurchaseRequestDto(
         @Positive(message = "O preço da compra deve ser maior que zero")
         BigDecimal purchasePrice,
 
-        @PastOrPresent(message = "A data da compra não pode ser no futuro")
+        @PastOrPresent(message = "A data da compra deve ser anterior a data corrente")
         Instant purchaseDate
 ) {
 }

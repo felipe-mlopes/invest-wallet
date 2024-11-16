@@ -70,7 +70,7 @@ public class AssetService {
         AssetEntity asset = assetRepository.findByAssetName(assetName);
 
         if (asset == null)
-            throw new ResourceNotFoundException("O ativo informado não existe");
+            throw new ResourceNotFoundException("O ativo " + assetName + " informado não existe");
 
         return asset.getAssetType();
     }
