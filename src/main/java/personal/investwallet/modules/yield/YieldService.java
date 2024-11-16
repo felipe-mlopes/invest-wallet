@@ -11,18 +11,16 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 import personal.investwallet.exceptions.*;
 import personal.investwallet.modules.asset.AssetService;
-import personal.investwallet.modules.webscraper.ScraperService;
-import personal.investwallet.modules.webscraper.dto.ScraperResponseDto;
-import personal.investwallet.modules.yield.YieldEntity.YieldInfo;
-import personal.investwallet.modules.yield.dto.YieldInfosResponseDto;
-import personal.investwallet.modules.yield.dto.YieldInfoRequestDto;
+import personal.investwallet.modules.wallet.WalletService;
+import personal.investwallet.modules.yield.dto.YieldRequestDto;
+import personal.investwallet.modules.yield.dto.YieldTimeIntervalRequestDto;
 import personal.investwallet.security.TokenService;
 
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.Reader;
+import java.io.*;
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.time.LocalDate;
+import java.time.YearMonth;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
@@ -38,71 +36,103 @@ public class YieldService {
     AssetService assetService;
 
     @Autowired
-    TokenService tokenService;
+    WalletService walletService;
 
     @Autowired
-    private ScraperService scraperService;
+    TokenService tokenService;
+
+    public void fetchAllYieldsByTimeInterval(String token, YieldTimeIntervalRequestDto payload) {
+
+        String userId = tokenService.extractUserIdFromToken(token);
+
+        List<YieldEntity> yieldList = new ArrayList<>();
+        List<String> yields = getYieldsAt(payload);
+
+        for (String yield : yields) {
+            List<YieldEntity> result = yieldRepository.findByUserIdAndYieldAt(userId, yield);
+            yieldList.addAll(result);
+        }
+
+        System.out.println(yieldList);
+    }
+
+    public int registerManyYieldsReceived(String token, List<YieldRequestDto> yields) {
+
+        String userId = tokenService.extractUserIdFromToken(token);
+
+        List<YieldEntity> yieldList = getYieldEntities(yields, userId);
+
+        yieldRepository.saveAll(yieldList);
+
+        return yields.size();
+    }
 
     @SneakyThrows
-    public int registerAllYieldsReceivedInPreviousMonthsByFile(String token, MultipartFile file) {
+    public int registerManyYieldsReceivedByCsv(String token, MultipartFile file) {
 
         String userId = tokenService.extractUserIdFromToken(token);
 
         validateFile(file);
 
-        List<YieldInfoRequestDto> yields = readCSVFile(file);
+        List<YieldRequestDto> yields = readCSVFile(file);
+        List<YieldEntity> yieldList = getYieldEntities(yields, userId);
 
-        Map<String, Map<String, YieldInfo>> yieldByAssetName = new HashMap<>();
-        Map<String, Map<String, YieldInfo>> yieldByPaymentAt = new HashMap<>();
+        yieldRepository.saveAll(yieldList);
 
-        for (YieldInfoRequestDto yield : yields) {
-            String assetName = yield.assetName();
-
-            String assetType = assetService.getAssetTypeByAssetName(assetName);
-
-            if (assetType == null)
-                throw new ResourceNotFoundException("O ativo " + assetName + " informado não existe.");
-
-            String yieldAt = yield.yieldAt();
-            YieldInfo yieldInfo = yield.yieldInfo();
-
-            yieldByAssetName
-                    .computeIfAbsent(assetName, k -> new HashMap<>())
-                    .put(yieldAt, yieldInfo);
-
-            yieldByPaymentAt
-                    .computeIfAbsent(yieldAt, k -> new HashMap<>())
-                    .put(assetName, yieldInfo);
-        }
-
-        YieldInfosResponseDto yieldInfoResponseDto = new YieldInfosResponseDto(
-                yieldByAssetName,
-                yieldByPaymentAt
-        );
-
-        registerYield(userId, yieldInfoResponseDto);
         return yields.size();
     }
 
-    public void registerAllYieldsReceivedInTheMonth(String token, List<Object> assets) {
+    public void registerManyYieldsReceivedInCurrentMonthByWebScraping() {
 
-        String userId = tokenService.extractUserIdFromToken(token);
+        // Passo 1: Buscar os ativos disponíveis na carteira de um usuário (Wallet)
+        List<String> assetNames = walletService.getAllAssetNames();
+        System.out.println(assetNames);
 
-        YieldInfosResponseDto yields = generateYieldInfo(assets);
+        // Passo 2: Chamar o Web Scraping (Scraping Service)
 
-        registerYield(userId, yields);
+        // Passo 3: Salvar no YieldRepository
 
+        // Passo 4: Devolver a quantidade de registro salvos com sucesso
+
+//        return 0;
     }
 
-    private static List<YieldInfoRequestDto> readCSVFile(MultipartFile file) {
+    private List<YieldEntity> getYieldEntities(List<YieldRequestDto> yields, String userId) {
+        List<YieldEntity> yieldList = new ArrayList<>();
+        for (YieldRequestDto yield : yields) {
+            assetService.getAssetTypeByAssetName(yield.assetName());
+
+            String yieldAt = generateYieldAt(yield.baseDate());
+            String userAssetYieldAt = userId + yield.assetName() + yieldAt;
+
+            if(!yieldRepository.existsByUserAssetYieldAt(userAssetYieldAt)) {
+                yieldList.add(new YieldEntity(
+                        UUID.randomUUID().toString(),
+                        userId,
+                        yield.assetName(),
+                        yieldAt,
+                        userAssetYieldAt,
+                        yield.baseDate(),
+                        yield.paymentDate(),
+                        yield.basePrice(),
+                        yield.incomeValue(),
+                        yield.yieldValue()
+                ));
+            }
+        }
+        return yieldList;
+    }
+
+    private static List<YieldRequestDto> readCSVFile(MultipartFile file) {
 
         try {
             Reader reader = new InputStreamReader(file.getInputStream());
 
-            CSVParser parser = new CSVParserBuilder().withSeparator(';').build();
+            CSVParser parser = new CSVParserBuilder().withSeparator(',').build();
             CSVReader csvReader = new CSVReaderBuilder(reader).withCSVParser(parser).build();
 
             List<String[]> rows = csvReader.readAll();
+
             if (rows.size() <= 1)
                 throw new EmptyFileException("Arquivo é inválido por estar vazio ou com apenas o cabeçalho preenchido");
 
@@ -117,9 +147,9 @@ public class YieldService {
         }
     }
 
-    private static List<YieldInfoRequestDto> processRows(List<String[]> rows) {
+    private static List<YieldRequestDto> processRows(List<String[]> rows) {
 
-        List<YieldInfoRequestDto> result = new ArrayList<>();
+        List<YieldRequestDto> result = new ArrayList<>();
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
         for (int rowNum = 0; rowNum < rows.size(); rowNum++) {
@@ -145,16 +175,14 @@ public class YieldService {
                 BigDecimal incomeValue = parseBigDecimal(row[5], "Valor do Rendimento", rowNum + 2);
                 BigDecimal yieldValue = parseBigDecimal(row[6], "Valor do Yield", rowNum + 2);
 
-                YieldInfo yieldInfo = new YieldInfo(
-                        baseLocalDate.atStartOfDay(ZoneId.systemDefault()).toInstant(),
-                        paymentLocalDate.atStartOfDay(ZoneId.systemDefault()).toInstant(),
-                        basePrice,
-                        incomeValue,
-                        yieldValue
-                );
-
-                result.add(new YieldInfoRequestDto(assetName, yieldAt, yieldInfo));
-
+               result.add(new YieldRequestDto(
+                       assetName,
+                       baseLocalDate.atStartOfDay(ZoneId.systemDefault()).toInstant(),
+                       paymentLocalDate.atStartOfDay(ZoneId.systemDefault()).toInstant(),
+                       basePrice,
+                       incomeValue,
+                       yieldValue
+               ));
             } catch (DateTimeParseException e) {
                 throw new InvalidDateFormatException(
                         "Erro na linha " + (rowNum + 2) + ": " + e.getMessage()
@@ -169,118 +197,30 @@ public class YieldService {
         return result;
     }
 
-    private void registerYield(String userId, YieldInfosResponseDto yieldInfoResponseDto) {
-        Optional<YieldEntity> existingYieldEntityOpt = yieldRepository.findByUserId(userId);
+    private static List<String> getYieldsAt(YieldTimeIntervalRequestDto payload) {
 
-        if (existingYieldEntityOpt.isPresent()) {
-            YieldEntity existingYieldEntity = existingYieldEntityOpt.get();
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyyMM");
 
-            extractedByAssetName(yieldInfoResponseDto, existingYieldEntity);
-            extractedByPaymentAt(yieldInfoResponseDto, existingYieldEntity);
+        LocalDate startLocalDate = payload.startAt().atZone(ZoneId.of("America/Sao_Paulo")).toLocalDate();
+        LocalDate endLocalDate = payload.endAt().atZone(ZoneId.of("America/Sao_Paulo")).toLocalDate();
 
-            yieldRepository.save(existingYieldEntity);
+        List<String> yieldAtParams = new ArrayList<>();
 
-        } else {
-            YieldEntity yieldEntity = new YieldEntity();
-            yieldEntity.setUserId(userId);
-            yieldEntity.getYieldByAssetName().putAll(yieldInfoResponseDto.yieldByAssetName());
-            yieldEntity.getYieldByPaymentAt().putAll(yieldInfoResponseDto.yieldByPaymentAt());
+        YearMonth start = YearMonth.of(startLocalDate.getYear(), startLocalDate.getMonth());
+        YearMonth end = YearMonth.of(endLocalDate.getYear(), endLocalDate.getMonth());
 
-            yieldRepository.save(yieldEntity);
-        }
-    }
-
-    private static void extractedByAssetName(YieldInfosResponseDto yields, YieldEntity existingYieldEntity) {
-        for (Map.Entry<String, Map<String, YieldInfo>> newYieldEntry : yields.yieldByAssetName().entrySet()) {
-            String assetName = newYieldEntry.getKey();
-            Map<String, YieldInfo> yieldInfoMap = newYieldEntry.getValue();
-
-            Map<String, YieldInfo> existingYieldsForAsset = existingYieldEntity.getYieldByAssetName()
-                    .computeIfAbsent(assetName, k -> new HashMap<>());
-
-            for (Map.Entry<String, YieldInfo> yieldInfoEntry : yieldInfoMap.entrySet()) {
-                String yieldAt = yieldInfoEntry.getKey();
-                YieldInfo yieldInfo = yieldInfoEntry.getValue();
-
-                if (!existingYieldsForAsset.containsKey(yieldAt)) {
-                    existingYieldsForAsset.put(yieldAt, yieldInfo);
-                }
-            }
-        }
-    }
-
-    private static void extractedByPaymentAt(YieldInfosResponseDto yields, YieldEntity existingYieldEntity) {
-
-        for (Map.Entry<String, Map<String, YieldInfo>> paymentEntry : yields.yieldByPaymentAt().entrySet()) {
-            String paymentAt = paymentEntry.getKey();
-            Map<String, YieldInfo> yieldInfoMap = paymentEntry.getValue();
-
-            Map<String, YieldInfo> yieldsAlreadySave = existingYieldEntity.getYieldByPaymentAt()
-                    .computeIfAbsent(paymentAt, k -> new HashMap<>());
-
-            for (Map.Entry<String, YieldInfo> assetEntry : yieldInfoMap.entrySet()) {
-                String asset = assetEntry.getKey();
-                YieldInfo newYieldInfo = assetEntry.getValue();
-
-                if (!yieldsAlreadySave.containsKey(asset)) {
-                    yieldsAlreadySave.put(asset, newYieldInfo);
-                }
-            }
+        while (!start.isAfter(end)) {
+            yieldAtParams.add(start.format(formatter));
+            start = start.plusMonths(1);
         }
 
+        return yieldAtParams;
     }
 
-    private YieldInfosResponseDto generateYieldInfo(List<Object> assets) {
+    private static String generateYieldAt(Instant basePrice) {
 
-        String todayFormattedAt = getYieldAt();
-
-        Map<String, Map<String, YieldInfo>> yieldByAssetName = new HashMap<>();
-        Map<String, Map<String, YieldInfo>> yieldByPaymentAt = new HashMap<>();
-
-        for (Object asset : assets) {
-            Map<String, Object> assetMap = (Map<String, Object>) asset;
-            String assetName = (String) assetMap.get("assetName");
-            int assetQuotaAmount = (int) assetMap.get("assetQuotaAmount");
-
-            String assetType = assetService.getAssetTypeByAssetName(assetName);
-
-            ScraperResponseDto values = scraperService.yieldScraping(assetType, assetName);
-
-            BigDecimal assetQuotaAmountBigDecimal = BigDecimal.valueOf(assetQuotaAmount);
-            BigDecimal incomeValue = assetQuotaAmountBigDecimal.multiply(values.yieldValue());
-
-            if (values.yieldAt().equals(todayFormattedAt)) {
-                Map<String, YieldInfo> yieldInfoListByAssetName = new HashMap<>();
-                yieldInfoListByAssetName.put(values.yieldAt(), new YieldInfo(
-                        values.basePriceDate(),
-                        values.basePaymentDate(),
-                        values.basePrice(),
-                        incomeValue,
-                        values.yieldValue()
-                ));
-                yieldByAssetName.put(assetName, yieldInfoListByAssetName);
-
-                Map<String, YieldInfo> yieldInfoListByPayment = yieldByPaymentAt
-                        .computeIfAbsent(values.yieldAt(), k -> new HashMap<>());
-
-                yieldInfoListByPayment.put(assetName, new YieldInfo(
-                        values.basePriceDate(),
-                        values.basePaymentDate(),
-                        values.basePrice(),
-                        incomeValue,
-                        values.yieldValue()
-                ));
-            }
-        }
-
-        return new YieldInfosResponseDto(yieldByAssetName, yieldByPaymentAt);
-    }
-
-    private static String getYieldAt() {
-
-        LocalDate today = LocalDate.now();
-        DateTimeFormatter todayFormatted = DateTimeFormatter.ofPattern("yyyyMM");
-        return today.format(todayFormatted);
+        DateTimeFormatter formatted = DateTimeFormatter.ofPattern("yyyyMM");
+        return basePrice.atZone(ZoneId.systemDefault()).format(formatted);
     }
 
     private void validateFile(MultipartFile file) {
