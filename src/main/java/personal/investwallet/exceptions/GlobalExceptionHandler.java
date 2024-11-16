@@ -67,6 +67,13 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
     }
 
+    @ExceptionHandler(InvalidStringFormatException.class)
+    public ResponseEntity<RestGenericErrorResponseDto> invalidStringFormatException(InvalidStringFormatException exception) {
+
+        RestGenericErrorResponseDto response = new RestGenericErrorResponseDto(HttpStatus.BAD_REQUEST.value(), HttpStatus.BAD_REQUEST, exception.getMessage());
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
+    }
+
     @ExceptionHandler(InvalidDateFormatException.class)
     public ResponseEntity<RestGenericErrorResponseDto> invalidDateFormatException(InvalidDateFormatException exception) {
 
