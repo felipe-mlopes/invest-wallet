@@ -5,10 +5,12 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import personal.investwallet.modules.yield.dto.YieldInfoResponse;
 import personal.investwallet.modules.yield.dto.YieldRequestDto;
 import personal.investwallet.modules.yield.dto.YieldTimeIntervalRequestDto;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("yield")
@@ -24,7 +26,7 @@ public class YieldController {
     ) {
 
         int result = yieldService.registerManyYieldsReceived(token, yields);
-        return ResponseEntity.created(null).body("Foi registrado " + result + " dividendos com sucesso.");
+        return ResponseEntity.created(null).body("Foram registrados " + result + " dividendos com sucesso.");
     }
 
     @PostMapping("/file")
@@ -38,19 +40,12 @@ public class YieldController {
     }
 
     @GetMapping()
-    public ResponseEntity<String> findManyByUserIdAndYieldAt(
+    public ResponseEntity<Map<String, List<YieldInfoResponse>>> getManyByUserIdAndYieldAt(
             @CookieValue(value = "access_token") String token,
             @RequestBody YieldTimeIntervalRequestDto payload
     ) {
 
-        yieldService.fetchAllYieldsByTimeInterval(token, payload);
-        return ResponseEntity.ok("Rodou");
-    }
-
-    @GetMapping("/assets")
-    public ResponseEntity<String> findAllAssets() {
-
-        yieldService.registerManyYieldsReceivedInCurrentMonthByWebScraping();
-        return ResponseEntity.ok("Rodou");
+        Map<String, List<YieldInfoResponse>> response = yieldService.fetchAllYieldsByTimeInterval(token, payload);
+        return ResponseEntity.ok(response);
     }
 }
