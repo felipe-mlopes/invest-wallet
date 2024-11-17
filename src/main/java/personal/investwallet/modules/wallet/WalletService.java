@@ -6,6 +6,7 @@ import com.opencsv.CSVReader;
 import com.opencsv.CSVReaderBuilder;
 import com.opencsv.exceptions.CsvException;
 import lombok.SneakyThrows;
+import org.bson.Document;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -39,6 +40,34 @@ public class WalletService {
 
     @Autowired
     private AssetService assetService;
+
+    public List<String> getAllAssetNames() {
+
+        return walletRepository.findDistinctAssetNames();
+    }
+
+    public List<String> getAllUserIdsWithWalletCreatedByAssetName(String assetName) {
+
+        return walletRepository.findUserIdsByAssetKey(assetName);
+    }
+
+    public Integer getQuotaAmountOfAssetByUserId(String userId, String assetName) {
+
+        Optional<Document> result = walletRepository.findQuotaAmountByUserIdAndAssetKey(userId, assetName);
+
+        return result.map(doc -> {
+            Document assets = (Document) doc.get("assets");
+
+            if (assets != null) {
+                Document asset = (Document) assets.get(assetName);
+
+                if (asset != null)
+                    return asset.getInteger("quota_amount");
+            }
+
+            return null;
+        }).orElse(null);
+    }
 
     public String addAssetToWallet(String token, CreateAssetRequestDto payload) {
 
@@ -91,7 +120,7 @@ public class WalletService {
                 payload.purchaseDate()
         );
 
-        walletRepository.addPurchaseToAssetByUserIdAndAssetName(userId, asset.getAssetName(), newPurchase, payload.purchaseAmount());
+        walletRepository.addPurchaseToAsset(userId, asset.getAssetName(), newPurchase, payload.purchaseAmount());
 
         return "A compra do seu ativo " + asset.getAssetName() + " foi cadastrada com sucesso" ;
     }
@@ -126,21 +155,15 @@ public class WalletService {
                 int totalAmount = asset.getQuotaAmount();
 
                 for (InfoGenericDto infoDto : infoDtoList) {
-                    Instant purchaseDate = infoDto.date();
-                    boolean exists = purchasesInfoList.stream()
-                            .anyMatch(purchase -> purchase.getPurchaseDate().equals(purchaseDate));
+                    PurchasesInfo purchasesInfo = new PurchasesInfo();
+                    purchasesInfo.setPurchaseId(infoDto.id());
+                    purchasesInfo.setPurchaseAmount(infoDto.amount());
+                    purchasesInfo.setPurchasePrice(infoDto.price());
+                    purchasesInfo.setPurchaseDate(infoDto.date());
+                    purchasesInfo.setPurchaseQuotaValue(infoDto.quotaValue());
 
-                    if (!exists) {
-                        PurchasesInfo purchasesInfo = new PurchasesInfo();
-                        purchasesInfo.setPurchaseId(infoDto.id());
-                        purchasesInfo.setPurchaseAmount(infoDto.amount());
-                        purchasesInfo.setPurchasePrice(infoDto.price());
-                        purchasesInfo.setPurchaseDate(infoDto.date());
-                        purchasesInfo.setPurchaseQuotaValue(infoDto.quotaValue());
-
-                        purchasesInfoList.add(purchasesInfo);
-                        totalAmount += infoDto.amount();
-                    }
+                    purchasesInfoList.add(purchasesInfo);
+                    totalAmount += infoDto.amount();
                 }
 
                 asset.setQuotaAmount(totalAmount);
@@ -281,7 +304,7 @@ public class WalletService {
                 payload.saleDate()
         );
 
-        walletRepository.addSaleToAssetByUserIdAndAssetName(userId, asset.getAssetName(), newSale, saleAmount);
+        walletRepository.addSaleToAsset(userId, asset.getAssetName(), newSale, saleAmount);
 
         return "A venda do seu ativo " + asset.getAssetName() + " foi cadastrada com sucesso" ;
     }
@@ -525,7 +548,7 @@ public class WalletService {
     private static void validateHeader(String[] header) {
 
         String[] expectedHeaders = {
-                "asset_name", "date", "amount", "price", "quota_value"
+                "Asset Name", "Purchase Date", "Amount", "Quota Price", "Value / Quota"
         };
 
         if (header.length != expectedHeaders.length) {
