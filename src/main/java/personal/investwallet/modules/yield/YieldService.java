@@ -12,6 +12,9 @@ import org.springframework.web.multipart.MultipartFile;
 import personal.investwallet.exceptions.*;
 import personal.investwallet.modules.asset.AssetService;
 import personal.investwallet.modules.wallet.WalletService;
+import personal.investwallet.modules.webscraper.ScraperService;
+import personal.investwallet.modules.webscraper.dto.ScraperResponseDto;
+import personal.investwallet.modules.yield.dto.YieldInfoResponse;
 import personal.investwallet.modules.yield.dto.YieldRequestDto;
 import personal.investwallet.modules.yield.dto.YieldTimeIntervalRequestDto;
 import personal.investwallet.security.TokenService;
@@ -39,9 +42,12 @@ public class YieldService {
     WalletService walletService;
 
     @Autowired
+    ScraperService scraperService;
+
+    @Autowired
     TokenService tokenService;
 
-    public void fetchAllYieldsByTimeInterval(String token, YieldTimeIntervalRequestDto payload) {
+    public Map<String, List<YieldInfoResponse>> fetchAllYieldsByTimeInterval(String token, YieldTimeIntervalRequestDto payload) {
 
         String userId = tokenService.extractUserIdFromToken(token);
 
@@ -53,7 +59,22 @@ public class YieldService {
             yieldList.addAll(result);
         }
 
-        System.out.println(yieldList);
+        Map<String, List<YieldInfoResponse>> resultMap = new HashMap<>();
+
+        for (YieldEntity entity : yieldList) {
+            resultMap
+                    .computeIfAbsent(entity.getYieldAt(), k -> new ArrayList<>())
+                    .add(new YieldInfoResponse(
+                            entity.getAssetName(),
+                            entity.getBaseDate(),
+                            entity.getPaymentDate(),
+                            entity.getBasePrice(),
+                            entity.getIncomeValue(),
+                            entity.getYieldValue()
+                    ));
+        }
+
+        return resultMap;
     }
 
     public int registerManyYieldsReceived(String token, List<YieldRequestDto> yields) {
@@ -82,19 +103,50 @@ public class YieldService {
         return yields.size();
     }
 
-    public void registerManyYieldsReceivedInCurrentMonthByWebScraping() {
+    public void registerManyFIIYieldsReceivedInCurrentMonthByWebScraping() {
 
-        // Passo 1: Buscar os ativos disponíveis na carteira de um usuário (Wallet)
         List<String> assetNames = walletService.getAllAssetNames();
-        System.out.println(assetNames);
+        String yieldCorrentAt = generateYieldAt(Instant.now());
 
-        // Passo 2: Chamar o Web Scraping (Scraping Service)
+        List<YieldEntity> yieldList = new ArrayList<>();
 
-        // Passo 3: Salvar no YieldRepository
+        for (String assetName : assetNames) {
+            String assetType = assetService.getAssetTypeByAssetName(assetName);
+            List<String> userIds = walletService.getAllUserIdsWithWalletCreatedByAssetName(assetName);
 
-        // Passo 4: Devolver a quantidade de registro salvos com sucesso
+            if (assetType.equals("fundos-imobiliarios")) {
+                ScraperResponseDto scraper = scraperService.fiiYieldScraping(assetType, assetName);
 
-//        return 0;
+                if (scraper.yieldAt().equals(yieldCorrentAt)) {
+                    for (String userId : userIds) {
+                        String userAssetYieldAt = userId + assetName + yieldCorrentAt;
+
+                        if(!yieldRepository.existsByUserAssetYieldAt(userAssetYieldAt)) {
+                            Integer quotaAmount = walletService.getQuotaAmountOfAssetByUserId(userId, assetName);
+
+                            if (quotaAmount != null && quotaAmount > 0) {
+                                BigDecimal yieldValue = scraper.incomeValue().multiply(BigDecimal.valueOf(quotaAmount));
+
+                                yieldList.add(new YieldEntity(
+                                        UUID.randomUUID().toString(),
+                                        userId,
+                                        assetName,
+                                        yieldCorrentAt,
+                                        userAssetYieldAt,
+                                        scraper.basePriceDate(),
+                                        scraper.basePaymentDate(),
+                                        scraper.basePrice(),
+                                        scraper.incomeValue(),
+                                        yieldValue
+                                ));
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        yieldRepository.saveAll(yieldList);
     }
 
     private List<YieldEntity> getYieldEntities(List<YieldRequestDto> yields, String userId) {
