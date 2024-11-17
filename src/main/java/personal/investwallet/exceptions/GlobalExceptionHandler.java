@@ -95,6 +95,13 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
     }
 
+    @ExceptionHandler(ScraperProcessingException.class)
+    public ResponseEntity<RestGenericErrorResponseDto> scraperProcessingException(ScraperProcessingException exception) {
+
+        RestGenericErrorResponseDto response = new RestGenericErrorResponseDto(HttpStatus.INTERNAL_SERVER_ERROR.value(), HttpStatus.INTERNAL_SERVER_ERROR, exception.getMessage());
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
+    }
+
     @ExceptionHandler(EmailSendException.class)
     public ResponseEntity<RestGenericErrorResponseDto> emailSendException(EmailSendException exception) {
 
