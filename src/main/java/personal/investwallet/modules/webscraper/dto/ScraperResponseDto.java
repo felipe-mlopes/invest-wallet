@@ -4,7 +4,8 @@ import java.math.BigDecimal;
 import java.time.Instant;
 
 public record ScraperResponseDto(
-        BigDecimal yieldValue,
+        String assetName,
+        BigDecimal incomeValue,
         BigDecimal basePrice,
         Instant basePriceDate,
         Instant basePaymentDate,
