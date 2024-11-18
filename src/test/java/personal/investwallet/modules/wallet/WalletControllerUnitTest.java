@@ -81,7 +81,8 @@ public class WalletControllerUnitTest {
             var violations = validator.validate(invalidPayload);
 
             assertEquals(1, violations.size());
-            assertTrue(violations.stream().anyMatch(v -> v.getMessage().equals("O nome do ativo deve conter entre 5 e 6 caracteres")));
+            assertTrue(violations.stream()
+                    .anyMatch(v -> v.getMessage().equals("O nome do ativo deve conter entre 5 e 6 caracteres")));
         }
     }
 
@@ -96,8 +97,7 @@ public class WalletControllerUnitTest {
                     "ABCD11",
                     100,
                     BigDecimal.valueOf(50.00),
-                    Instant.now().minus(Duration.ofDays(1))
-            );
+                    Instant.now().minus(Duration.ofDays(1)));
 
             ResponseEntity<WallerSuccessResponseDto> response = walletController.addPurchase(TOKEN, payload);
 
@@ -116,8 +116,7 @@ public class WalletControllerUnitTest {
                     "",
                     100,
                     BigDecimal.valueOf(50.00),
-                    Instant.now().minus(Duration.ofDays(1))
-            );
+                    Instant.now().minus(Duration.ofDays(1)));
 
             var violations = validator.validate(invalidPayload);
 
@@ -132,16 +131,19 @@ public class WalletControllerUnitTest {
                     "AB11",
                     0,
                     BigDecimal.valueOf(0),
-                    Instant.now().plus(Duration.ofDays(1))
-            );
+                    Instant.now().plus(Duration.ofDays(1)));
 
             var violations = validator.validate(invalidPayload);
 
             assertEquals(4, violations.size());
-            assertTrue(violations.stream().anyMatch(v -> v.getMessage().equals("O nome do ativo deve conter entre 5 e 6 caracteres")));
-            assertTrue(violations.stream().anyMatch(v -> v.getMessage().equals("O número de cotas compradas deve ser maior que zero")));
-            assertTrue(violations.stream().anyMatch(v -> v.getMessage().equals("O preço da compra deve ser maior que zero")));
-            assertTrue(violations.stream().anyMatch(v -> v.getMessage().equals("A data da compra não pode ser no futuro")));
+            assertTrue(violations.stream()
+                    .anyMatch(v -> v.getMessage().equals("O nome do ativo deve conter entre 5 e 6 caracteres")));
+            assertTrue(violations.stream()
+                    .anyMatch(v -> v.getMessage().equals("O número de cotas compradas deve ser maior que zero")));
+            assertTrue(violations.stream()
+                    .anyMatch(v -> v.getMessage().equals("O preço da compra deve ser maior que zero")));
+            assertTrue(violations.stream()
+                    .anyMatch(v -> v.getMessage().equals("A data da compra deve ser anterior a data corrente")));
         }
     }
 
@@ -159,8 +161,7 @@ public class WalletControllerUnitTest {
                     "purchases",
                     "purchases.csv",
                     "text/csv",
-                    csvContent.getBytes()
-            );
+                    csvContent.getBytes());
 
             ResponseEntity<WallerSuccessResponseDto> response = walletController.addManyPurchasesByCSV(TOKEN, file);
 
@@ -182,15 +183,13 @@ public class WalletControllerUnitTest {
             UpdatePurchaseRequestDto payload = new UpdatePurchaseRequestDto(
                     100,
                     BigDecimal.valueOf(50.00),
-                    Instant.now().minus(Duration.ofDays(1))
-            );
+                    Instant.now().minus(Duration.ofDays(1)));
 
             ResponseEntity<WallerSuccessResponseDto> response = walletController.updatePurchase(
                     TOKEN,
                     "ABCD11",
                     "purchaseId",
-                    payload
-            );
+                    payload);
 
             assertNotNull(response);
             assertEquals(HttpStatus.OK, response.getStatusCode());
@@ -200,8 +199,7 @@ public class WalletControllerUnitTest {
                     TOKEN,
                     "ABCD11",
                     "purchaseId",
-                    payload
-            );
+                    payload);
         }
 
         @Test
@@ -211,15 +209,17 @@ public class WalletControllerUnitTest {
             UpdatePurchaseRequestDto invalidPayload = new UpdatePurchaseRequestDto(
                     0,
                     BigDecimal.valueOf(0),
-                    Instant.now().plus(Duration.ofDays(1))
-            );
+                    Instant.now().plus(Duration.ofDays(1)));
 
             var violations = validator.validate(invalidPayload);
 
             assertEquals(3, violations.size());
-            assertTrue(violations.stream().anyMatch(v -> v.getMessage().equals("O número de cotas compradas deve ser maior que zero")));
-            assertTrue(violations.stream().anyMatch(v -> v.getMessage().equals("O preço da compra deve ser maior que zero")));
-            assertTrue(violations.stream().anyMatch(v -> v.getMessage().equals("A data da compra não pode ser no futuro")));
+            assertTrue(violations.stream()
+                    .anyMatch(v -> v.getMessage().equals("O número de cotas compradas deve ser maior que zero")));
+            assertTrue(violations.stream()
+                    .anyMatch(v -> v.getMessage().equals("O preço da compra deve ser maior que zero")));
+            assertTrue(violations.stream()
+                    .anyMatch(v -> v.getMessage().equals("A data da compra não pode ser no futuro")));
         }
     }
 
@@ -231,8 +231,7 @@ public class WalletControllerUnitTest {
         void shouldBeAbleToRemovePurchaseOfAssetFromWalletByPurchaseId() {
 
             ResponseEntity<WallerSuccessResponseDto> response = walletController.removePurchase(
-                    TOKEN, "ABCD11", "purchaseId"
-            );
+                    TOKEN, "ABCD11", "purchaseId");
 
             assertNotNull(response);
             assertEquals(HttpStatus.OK, response.getStatusCode());
@@ -241,8 +240,7 @@ public class WalletControllerUnitTest {
             verify(walletService, times(1)).removePurchaseToAssetByPurchaseId(
                     TOKEN,
                     "ABCD11",
-                    "purchaseId"
-            );
+                    "purchaseId");
         }
     }
 
@@ -257,8 +255,7 @@ public class WalletControllerUnitTest {
                     "ABCD11",
                     100,
                     BigDecimal.valueOf(50.00),
-                    Instant.now().minus(Duration.ofDays(1))
-            );
+                    Instant.now().minus(Duration.ofDays(1)));
 
             ResponseEntity<WallerSuccessResponseDto> response = walletController.addSale(TOKEN, payload);
 
@@ -277,8 +274,7 @@ public class WalletControllerUnitTest {
                     "",
                     100,
                     BigDecimal.valueOf(50.00),
-                    Instant.now().minus(Duration.ofDays(1))
-            );
+                    Instant.now().minus(Duration.ofDays(1)));
 
             var violations = validator.validate(invalidPayload);
 
@@ -293,16 +289,19 @@ public class WalletControllerUnitTest {
                     "AB11",
                     0,
                     BigDecimal.valueOf(0),
-                    Instant.now().plus(Duration.ofDays(1))
-            );
+                    Instant.now().plus(Duration.ofDays(1)));
 
             var violations = validator.validate(invalidPayload);
 
             assertEquals(4, violations.size());
-            assertTrue(violations.stream().anyMatch(v -> v.getMessage().equals("O nome do ativo deve conter entre 5 e 6 caracteres")));
-            assertTrue(violations.stream().anyMatch(v -> v.getMessage().equals("O número de cotas vendidas deve ser maior que zero")));
-            assertTrue(violations.stream().anyMatch(v -> v.getMessage().equals("O preço da venda deve ser maior que zero")));
-            assertTrue(violations.stream().anyMatch(v -> v.getMessage().equals("A data da venda não pode ser no futuro")));
+            assertTrue(violations.stream()
+                    .anyMatch(v -> v.getMessage().equals("O nome do ativo deve conter entre 5 e 6 caracteres")));
+            assertTrue(violations.stream()
+                    .anyMatch(v -> v.getMessage().equals("O número de cotas vendidas deve ser maior que zero")));
+            assertTrue(violations.stream()
+                    .anyMatch(v -> v.getMessage().equals("O preço da venda deve ser maior que zero")));
+            assertTrue(
+                    violations.stream().anyMatch(v -> v.getMessage().equals("A data da venda não pode ser no futuro")));
         }
     }
 
@@ -320,8 +319,7 @@ public class WalletControllerUnitTest {
                     "sales",
                     "sales.csv",
                     "text/csv",
-                    csvContent.getBytes()
-            );
+                    csvContent.getBytes());
 
             ResponseEntity<WallerSuccessResponseDto> response = walletController.addManySalesByCSV(TOKEN, file);
 
@@ -343,15 +341,13 @@ public class WalletControllerUnitTest {
             UpdateSaleRequestDto payload = new UpdateSaleRequestDto(
                     100,
                     BigDecimal.valueOf(50.00),
-                    Instant.now().minus(Duration.ofDays(1))
-            );
+                    Instant.now().minus(Duration.ofDays(1)));
 
             ResponseEntity<WallerSuccessResponseDto> response = walletController.updateSale(
                     TOKEN,
                     "ABCD11",
                     "saleId",
-                    payload
-            );
+                    payload);
 
             assertNotNull(response);
             assertEquals(HttpStatus.OK, response.getStatusCode());
@@ -361,8 +357,7 @@ public class WalletControllerUnitTest {
                     TOKEN,
                     "ABCD11",
                     "saleId",
-                    payload
-            );
+                    payload);
         }
 
         @Test
@@ -372,15 +367,17 @@ public class WalletControllerUnitTest {
             UpdateSaleRequestDto invalidPayload = new UpdateSaleRequestDto(
                     0,
                     BigDecimal.valueOf(0),
-                    Instant.now().plus(Duration.ofDays(1))
-            );
+                    Instant.now().plus(Duration.ofDays(1)));
 
             var violations = validator.validate(invalidPayload);
 
             assertEquals(3, violations.size());
-            assertTrue(violations.stream().anyMatch(v -> v.getMessage().equals("O número de cotas vendidas deve ser maior que zero")));
-            assertTrue(violations.stream().anyMatch(v -> v.getMessage().equals("O preço da venda deve ser maior que zero")));
-            assertTrue(violations.stream().anyMatch(v -> v.getMessage().equals("A data da venda não pode ser no futuro")));
+            assertTrue(violations.stream()
+                    .anyMatch(v -> v.getMessage().equals("O número de cotas vendidas deve ser maior que zero")));
+            assertTrue(violations.stream()
+                    .anyMatch(v -> v.getMessage().equals("O preço da venda deve ser maior que zero")));
+            assertTrue(
+                    violations.stream().anyMatch(v -> v.getMessage().equals("A data da venda não pode ser no futuro")));
         }
     }
 
@@ -392,8 +389,7 @@ public class WalletControllerUnitTest {
         void shouldBeAbleToRemoveSaleOfAssetFromWalletBySaleId() {
 
             ResponseEntity<WallerSuccessResponseDto> response = walletController.removeSale(
-                    TOKEN, "ABCD11", "saleId"
-            );
+                    TOKEN, "ABCD11", "saleId");
 
             assertNotNull(response);
             assertEquals(HttpStatus.OK, response.getStatusCode());
@@ -402,8 +398,7 @@ public class WalletControllerUnitTest {
             verify(walletService, times(1)).removeSaleToAssetBySaleId(
                     TOKEN,
                     "ABCD11",
-                    "saleId"
-            );
+                    "saleId");
         }
     }
 }
