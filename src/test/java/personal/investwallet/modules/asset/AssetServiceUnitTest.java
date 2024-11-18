@@ -37,7 +37,7 @@ public class AssetServiceUnitTest {
         void shouldBeAbleToReadTxtFile() throws IOException {
 
             String fileContent = """
-                    
+
                     012024100112ABCD11      010FII BARIGUI CI  ER       R$
                     012024100112XYZW11      010FII BARIGUI CI  ER       R$
                     """;
@@ -61,8 +61,7 @@ public class AssetServiceUnitTest {
             MultipartFile invalidFile = new MockMultipartFile("test.txt", new byte[0]);
 
             EmptyFileException exception = assertThrows(EmptyFileException.class,
-                    () -> assetService.readTxtFile(invalidFile)
-            );
+                    () -> assetService.readTxtFile(invalidFile));
             assertEquals("O arquivo é inválido por estar vazio", exception.getMessage());
         }
 
@@ -71,7 +70,7 @@ public class AssetServiceUnitTest {
         void shouldNotBeAbleToReadTxtFileWithADifferentFormat() {
 
             String fileContent = """
-                    
+
                     012024100112ABCD11      010FII BARIGUI CI  ER       R$
                     012024100112XYZW11      010FII BARIGUI CI  ER       R$
                     """;
@@ -80,12 +79,10 @@ public class AssetServiceUnitTest {
                     "file",
                     "file.csv",
                     "text/csv",
-                    fileContent.getBytes()
-            );
+                    fileContent.getBytes());
 
             FileProcessingException exception = assertThrows(FileProcessingException.class,
-                    () -> assetService.readTxtFile(invalidFile)
-            );
+                    () -> assetService.readTxtFile(invalidFile));
             assertEquals("Formato do arquivo inválido", exception.getMessage());
         }
     }
@@ -114,9 +111,8 @@ public class AssetServiceUnitTest {
             when(assetRepository.findByAssetName("ABCD11")).thenReturn(null);
 
             ResourceNotFoundException exception = assertThrows(ResourceNotFoundException.class,
-                    () -> assetService.getAssetTypeByAssetName("ABCD11")
-            );
-            assertEquals("O ativo informado não existe", exception.getMessage());
+                    () -> assetService.getAssetTypeByAssetName("ABCD11"));
+            assertEquals("O ativo ABCD11 informado não existe", exception.getMessage());
         }
     }
 }
