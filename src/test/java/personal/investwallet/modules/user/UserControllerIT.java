@@ -34,6 +34,7 @@ import static org.junit.jupiter.api.ClassOrderer.OrderAnnotation;
 @TestClassOrder(OrderAnnotation.class)
 public class UserControllerIT {
 
+    @SuppressWarnings("resource")
     @Container
     static MongoDBContainer mongoDBContainer = new MongoDBContainer("mongo:latest")
             .withExposedPorts(27017)
@@ -97,8 +98,7 @@ public class UserControllerIT {
             ResponseEntity<UserSuccessResponseDto> response = restTemplate.postForEntity(
                     "/user/register",
                     payload,
-                    UserSuccessResponseDto.class
-            );
+                    UserSuccessResponseDto.class);
 
             String message = "Usuário cadastrado com sucesso";
             assertNotNull(response);
@@ -120,8 +120,7 @@ public class UserControllerIT {
             ResponseEntity<UserSuccessResponseDto> response = restTemplate.postForEntity(
                     "/user/register",
                     payload,
-                    UserSuccessResponseDto.class
-            );
+                    UserSuccessResponseDto.class);
 
             String message = "Usuário já existe";
             assertEquals(HttpStatus.CONFLICT, response.getStatusCode());
@@ -132,8 +131,7 @@ public class UserControllerIT {
             return new UserCreateRequestDto(
                     "John Doe",
                     "john.doe@example.com",
-                    "Password123"
-            );
+                    "Password123");
         }
     }
 
@@ -142,6 +140,7 @@ public class UserControllerIT {
     @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
     class Validate {
 
+        @SuppressWarnings("null")
         @Test
         @Order(1)
         void validateUser_shouldCheckSuccessfully() {
@@ -168,8 +167,7 @@ public class UserControllerIT {
                     "/user/validate",
                     HttpMethod.PATCH,
                     requestEntity,
-                    UserSuccessResponseDto.class
-            );
+                    UserSuccessResponseDto.class);
 
             String message = "Validação concluída com sucesso";
 
@@ -193,8 +191,7 @@ public class UserControllerIT {
                     "/user/validate",
                     HttpMethod.PATCH,
                     requestEntity,
-                    UserSuccessResponseDto.class
-            );
+                    UserSuccessResponseDto.class);
 
             String message = "Email inválido";
             assertEquals(HttpStatus.UNAUTHORIZED, response.getStatusCode());
@@ -222,8 +219,7 @@ public class UserControllerIT {
                     "/user/validate",
                     HttpMethod.PATCH,
                     requestEntity,
-                    UserSuccessResponseDto.class
-            );
+                    UserSuccessResponseDto.class);
 
             String message = "O código informado não confere";
             assertEquals(HttpStatus.UNAUTHORIZED, response.getStatusCode());
@@ -265,8 +261,7 @@ public class UserControllerIT {
                     "/user/validate",
                     HttpMethod.PATCH,
                     requestEntity,
-                    UserSuccessResponseDto.class
-            );
+                    UserSuccessResponseDto.class);
 
             String message = "Tempo de validação expirado";
             assertEquals(HttpStatus.UNAUTHORIZED, response.getStatusCode());
@@ -276,8 +271,7 @@ public class UserControllerIT {
         private static @NotNull UserValidateRequestDto getUserValidateRequestDto() {
             return new UserValidateRequestDto(
                     "john.doe@example.com",
-                    "AB12"
-            );
+                    "AB12");
         }
     }
 
@@ -302,8 +296,7 @@ public class UserControllerIT {
             ResponseEntity<UserSuccessResponseDto> response = restTemplate.postForEntity(
                     "/user/revalidate",
                     payload,
-                    UserSuccessResponseDto.class
-            );
+                    UserSuccessResponseDto.class);
 
             String message = "Código de confirmação reenviado";
             assertNotNull(response);
@@ -321,8 +314,7 @@ public class UserControllerIT {
             ResponseEntity<UserSuccessResponseDto> response = restTemplate.postForEntity(
                     "/user/revalidate",
                     payload,
-                    UserSuccessResponseDto.class
-            );
+                    UserSuccessResponseDto.class);
 
             String message = "Email inválido";
             assertEquals(HttpStatus.UNAUTHORIZED, response.getStatusCode());
@@ -346,8 +338,7 @@ public class UserControllerIT {
             ResponseEntity<UserSuccessResponseDto> response = restTemplate.postForEntity(
                     "/user/revalidate",
                     payload,
-                    UserSuccessResponseDto.class
-            );
+                    UserSuccessResponseDto.class);
 
             String message = "O cadastro do usuário já está válido";
             assertEquals(HttpStatus.CONFLICT, response.getStatusCode());
@@ -391,8 +382,7 @@ public class UserControllerIT {
             ResponseEntity<UserSuccessResponseDto> response = restTemplate.postForEntity(
                     "/user/revalidate",
                     payload,
-                    UserSuccessResponseDto.class
-            );
+                    UserSuccessResponseDto.class);
 
             String message = "O código de verificação enviado anteriormente ainda está válido";
             assertEquals(HttpStatus.CONFLICT, response.getStatusCode());
@@ -422,8 +412,7 @@ public class UserControllerIT {
             ResponseEntity<TokenResponseDto> response = restTemplate.postForEntity(
                     "/user/login",
                     payload,
-                    TokenResponseDto.class
-            );
+                    TokenResponseDto.class);
 
             assertNotNull(response);
             assertEquals(HttpStatus.OK, response.getStatusCode());
@@ -440,8 +429,7 @@ public class UserControllerIT {
             ResponseEntity<RestGenericErrorResponseDto> response = restTemplate.postForEntity(
                     "/user/login",
                     payload,
-                    RestGenericErrorResponseDto.class
-            );
+                    RestGenericErrorResponseDto.class);
 
             String message = "Usuário e/ou senha inválidos";
             assertEquals(HttpStatus.UNAUTHORIZED, response.getStatusCode());
@@ -465,8 +453,7 @@ public class UserControllerIT {
             ResponseEntity<RestGenericErrorResponseDto> response = restTemplate.postForEntity(
                     "/user/login",
                     payload,
-                    RestGenericErrorResponseDto.class
-            );
+                    RestGenericErrorResponseDto.class);
 
             String message = "Usuário e/ou senha inválidos";
             assertEquals(HttpStatus.UNAUTHORIZED, response.getStatusCode());
@@ -489,8 +476,7 @@ public class UserControllerIT {
             ResponseEntity<RestGenericErrorResponseDto> response = restTemplate.postForEntity(
                     "/user/login",
                     payload,
-                    RestGenericErrorResponseDto.class
-            );
+                    RestGenericErrorResponseDto.class);
 
             String message = "Usuário não confirmou seu cadastro por e-mail";
             assertEquals(HttpStatus.UNAUTHORIZED, response.getStatusCode());
@@ -500,8 +486,7 @@ public class UserControllerIT {
         private static @NotNull UserLoginRequestDto getUserLoginRequestDto() {
             return new UserLoginRequestDto(
                     "john.doe@example.com",
-                    "Password123"
-            );
+                    "Password123");
         }
     }
 
