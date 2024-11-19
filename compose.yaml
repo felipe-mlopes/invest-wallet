@@ -9,6 +9,24 @@ services:
       - '27017:27017'
     volumes:
       - 'db:/data/db'
+  
+  jenkins:
+    image: jenkins/jenkins:lts-jdk17
+    container_name: jenkins-jdk-17
+    privileged: true
+    user: root
+    restart: always
+    environment:
+      - JENKINS_OPTS=--httpPort=9090
+    ports:
+      - "9090:9090"
+      - '5000:5000'
+    labels:
+      org.springframework.boot.ignore: true
+    volumes:
+      - jenkins_home:/var/jenkins_home
 
 volumes:
   db:
+  jenkins_home:
+    name: jenkins_home
