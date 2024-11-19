@@ -7,13 +7,19 @@ pipeline {
     }
 
     triggers {
-        pollSCM 'H/2 * * * *'
+        pollSCM '* * * * *'
     }
 
     stages {
-        stage('Build and Test') {
+        stage('Build') {
             steps {
-                sh './mvnw verify'
+                sh './mvnw clean'
+            }
+        }
+
+        stage('Unit Test') {
+            steps {
+                sh './mvnw test'
             }
         }
     }
