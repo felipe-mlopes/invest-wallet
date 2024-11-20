@@ -548,7 +548,7 @@ public class WalletService {
     private static void validateHeader(String[] header) {
 
         String[] expectedHeaders = {
-                "Asset Name", "Purchase Date", "Amount", "Quota Price", "Value / Quota"
+                "Asset Name", "Date", "Amount", "Quota Price", "Value / Quota"
         };
 
         if (header.length != expectedHeaders.length) {

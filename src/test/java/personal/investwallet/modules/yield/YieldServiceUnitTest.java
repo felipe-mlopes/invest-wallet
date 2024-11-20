@@ -11,9 +11,14 @@ import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.web.multipart.MultipartFile;
 import personal.investwallet.exceptions.*;
 import personal.investwallet.modules.asset.AssetService;
+import personal.investwallet.modules.wallet.WalletService;
 import personal.investwallet.modules.webscraper.ScraperService;
 import personal.investwallet.modules.webscraper.dto.ScraperResponseDto;
+import personal.investwallet.modules.yield.dto.YieldAssetNameRequestDto;
+import personal.investwallet.modules.yield.dto.YieldInfoByAssetNameResponseDto;
+import personal.investwallet.modules.yield.dto.YieldInfoByYieldAtResponseDto;
 import personal.investwallet.modules.yield.dto.YieldRequestDto;
+import personal.investwallet.modules.yield.dto.YieldTimeIntervalRequestDto;
 import personal.investwallet.security.TokenService;
 
 import java.io.*;
@@ -23,10 +28,11 @@ import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.*;
 
+import static org.junit.Assert.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -37,6 +43,9 @@ public class YieldServiceUnitTest {
 
         @Mock
         private AssetService assetService;
+
+        @Mock
+        private WalletService walletService;
 
         @Mock
         private ScraperService scraperService;
@@ -53,13 +62,135 @@ public class YieldServiceUnitTest {
         public static final String TOKEN = "validToken";
         public static final String USER_ID = "user1234";
 
-        @BeforeEach
-        void setUp() {
-                when(tokenService.extractUserIdFromToken(TOKEN)).thenReturn(USER_ID);
+        @Nested
+        class GetManyByUserIdAndYieldAt {
+
+                @Test
+                @DisplayName("Should be able to get many userId and yielAt")
+                void shouldBeAbleToGetManyUserIdAndYieldAt() {
+
+                        Instant startAt = Instant.parse("2024-09-01T00:00:00Z");
+                        Instant endAt = Instant.parse("2024-10-31T00:00:00Z");
+                        YieldTimeIntervalRequestDto payload = new YieldTimeIntervalRequestDto(startAt, endAt);
+
+                        YieldEntity yield1 = new YieldEntity("yield-01", USER_ID, "ABCD11", "202409",
+                                        "user123ABCD11202410",
+                                        Instant.parse("2024-08-31T00:00:00Z"),
+                                        Instant.parse("2024-09-15T00:00:00Z"), new BigDecimal("10.00"),
+                                        new BigDecimal("100.00"), new BigDecimal("0.1"));
+                        YieldEntity yield2 = new YieldEntity("yield-02", USER_ID, "XYZW11", "202409",
+                                        "user123XYZW11202410",
+                                        Instant.parse("2024-08-31T00:00:00Z"),
+                                        Instant.parse("2024-09-15T00:00:00Z"), new BigDecimal("10.00"),
+                                        new BigDecimal("100.00"), new BigDecimal("0.1"));
+                        YieldEntity yield3 = new YieldEntity("yield-03", USER_ID, "DCBA11", "202408",
+                                        "user123DCBA11202409",
+                                        Instant.parse("2024-07-31T00:00:00Z"),
+                                        Instant.parse("2024-08-15T00:00:00Z"), new BigDecimal("10.00"),
+                                        new BigDecimal("100.00"), new BigDecimal("0.1"));
+
+                        when(tokenService.extractUserIdFromToken(TOKEN)).thenReturn(USER_ID);
+                        when(yieldRepository.findByUserIdAndYieldAt(USER_ID, "202408"))
+                                        .thenReturn(List.of(yield3));
+                        when(yieldRepository.findByUserIdAndYieldAt(USER_ID, "202409"))
+                                        .thenReturn(List.of(yield1, yield2));
+                        when(yieldRepository.findByUserIdAndYieldAt(USER_ID, "202410"))
+                                        .thenReturn(List.of());
+
+                        Map<String, List<YieldInfoByYieldAtResponseDto>> result = yieldService
+                                        .fetchAllYieldsByTimeInterval(TOKEN, payload);
+
+                        assertNotNull(result);
+                        assertEquals(2, result.size());
+                        assertTrue("202409", result.containsKey("202409"));
+
+                        List<YieldInfoByYieldAtResponseDto> responses = result.get("202409");
+                        assertEquals("ABCD11", responses.get(0).assetName());
+                }
+
+                @Test
+                @DisplayName("Should not be able to get many userId and yielAt when no yields found")
+                void shouldNotBeAbleToGetManyUserIdAndYieldAtWhenNoYieldsFound() {
+
+                        Instant startAt = Instant.parse("2024-10-01T00:00:00Z");
+                        Instant endAt = Instant.parse("2024-10-31T00:00:00Z");
+                        YieldTimeIntervalRequestDto payload = new YieldTimeIntervalRequestDto(startAt, endAt);
+
+                        when(tokenService.extractUserIdFromToken(TOKEN)).thenReturn(USER_ID);
+                        when(yieldRepository.findByUserIdAndYieldAt(USER_ID, "202409"))
+                                        .thenReturn(List.of());
+                        when(yieldRepository.findByUserIdAndYieldAt(USER_ID, "202410"))
+                                        .thenReturn(List.of());
+
+                        Map<String, List<YieldInfoByYieldAtResponseDto>> result = yieldService
+                                        .fetchAllYieldsByTimeInterval(TOKEN, payload);
+
+                        assertNotNull(result);
+                        assertEquals(0, result.size());
+                }
+        }
+
+        @Nested
+        class GetManyByUserIdAndAssetName {
+
+                @Test
+                @DisplayName("Should be able to get many userId and asset name")
+                void shouldBeAbleToGetManyUserIdAndAssetName() {
+
+                        YieldAssetNameRequestDto payload = new YieldAssetNameRequestDto("ABCD11");
+
+                        YieldEntity yield1 = new YieldEntity("yield-01", USER_ID, "ABCD11", "202409",
+                                        "user123ABCD11202409",
+                                        Instant.parse("2024-08-31T00:00:00Z"),
+                                        Instant.parse("2024-09-15T00:00:00Z"), new BigDecimal("10.00"),
+                                        new BigDecimal("100.00"), new BigDecimal("0.1"));
+                        YieldEntity yield2 = new YieldEntity("yield-03", USER_ID, "ABCD11", "202410",
+                                        "user123ABCD11202410",
+                                        Instant.parse("2024-09-30T00:00:00Z"),
+                                        Instant.parse("2024-10-15T00:00:00Z"), new BigDecimal("10.00"),
+                                        new BigDecimal("100.00"), new BigDecimal("0.1"));
+
+                        when(tokenService.extractUserIdFromToken(TOKEN)).thenReturn(USER_ID);
+                        when(yieldRepository.findByUserIdAndAssetName(USER_ID, "ABCD11"))
+                                        .thenReturn(List.of(yield1, yield2));
+
+                        Map<String, List<YieldInfoByAssetNameResponseDto>> result = yieldService
+                                        .fetchAllYieldAtByAssetName(TOKEN, payload);
+
+                        assertNotNull(result);
+                        assertEquals(1, result.size());
+                        assertTrue("ABCD11", result.containsKey("ABCD11"));
+
+                        List<YieldInfoByAssetNameResponseDto> responses = result.get("ABCD11");
+                        assertEquals("202409", responses.get(0).yieldAt());
+                        assertEquals("202410", responses.get(1).yieldAt());
+                }
+
+                @Test
+                @DisplayName("Should not be able to get many userId and asset name when no yields found")
+                void shouldNotBeAbleToGetManyUserIdAndAssetNameWhenNoYieldsFound() {
+
+                        YieldAssetNameRequestDto payload = new YieldAssetNameRequestDto("ABCD11");
+
+                        when(tokenService.extractUserIdFromToken(TOKEN)).thenReturn(USER_ID);
+                        when(yieldRepository.findByUserIdAndAssetName(USER_ID, "ABCD11"))
+                                        .thenReturn(List.of());
+
+                        Map<String, List<YieldInfoByAssetNameResponseDto>> result = yieldService
+                                        .fetchAllYieldAtByAssetName(TOKEN, payload);
+
+                        assertNotNull(result);
+                        assertEquals(0, result.size());
+                }
         }
 
         @Nested
         class RegisterManyYieldsReceivedByCsv {
+
+                @BeforeEach
+                void setUp() {
+                        when(tokenService.extractUserIdFromToken(TOKEN)).thenReturn(USER_ID);
+                }
 
                 @Test
                 @DisplayName("Should be able to register all yields received in previous months by file in new entity")
@@ -526,34 +657,125 @@ public class YieldServiceUnitTest {
         }
 
         @Nested
-        class registerAllYieldsReceivedInTheMonth {
+        class RegisterAllYieldsReceivedInTheMonth {
 
                 @Test
-                void shouldBeAbleToRegisterAllYieldsReceivedInTheMonth() {
+                @DisplayName("Should be able to register many yields received with many distinct yields")
+                void shouldBeAbleToRegisterManyYieldsReceivedWhitManyDistinctYields() {
 
-                        List<YieldRequestDto> assets = new ArrayList<>();
+                        YieldRequestDto yield1 = new YieldRequestDto(
+                                        "ABCD11",
+                                        Instant.parse("2024-08-31T00:00:00Z"),
+                                        Instant.parse("2024-09-15T00:00:00Z"),
+                                        new BigDecimal("10.00"),
+                                        new BigDecimal("100.00"),
+                                        new BigDecimal("0.1"));
+                        YieldRequestDto yield2 = new YieldRequestDto(
+                                        "XYZW11",
+                                        Instant.parse("2024-08-31T00:00:00Z"),
+                                        Instant.parse("2024-09-15T00:00:00Z"),
+                                        new BigDecimal("10.00"),
+                                        new BigDecimal("100.00"),
+                                        new BigDecimal("0.1"));
 
-                        when(assetService.getAssetTypeByAssetName("ASSET1")).thenReturn("fundos-imobiliarios");
+                        List<YieldRequestDto> payload = List.of(yield1, yield2);
+
+                        when(tokenService.extractUserIdFromToken(TOKEN)).thenReturn(USER_ID);
+                        when(assetService.getAssetTypeByAssetName("ABCD11")).thenReturn("fundos-imobiliarios");
+                        when(assetService.getAssetTypeByAssetName("XYZW11")).thenReturn("fundos-imobiliarios");
+
+                        int result = yieldService.registerManyYieldsReceived(TOKEN, payload);
+
+                        assertNotNull(result);
+                        assertEquals(2, result);
+                        verify(yieldRepository, times(1)).saveAll(anyList());
+                }
+
+                @Test
+                @DisplayName("Should be able to register many yields received with duplicate yield provided")
+                void shouldBeAbleToRegisterManyYieldsReceivedWhitManyDistinctAssets() {
+
+                        YieldRequestDto yield1 = new YieldRequestDto(
+                                        "ABCD11",
+                                        Instant.parse("2024-08-31T00:00:00Z"),
+                                        Instant.parse("2024-09-15T00:00:00Z"),
+                                        new BigDecimal("10.00"),
+                                        new BigDecimal("100.00"),
+                                        new BigDecimal("0.1"));
+
+                        List<YieldRequestDto> payload = List.of(yield1);
+
+                        String userAssetYieldAt = USER_ID + yield1.assetName() + "202408";
+
+                        when(tokenService.extractUserIdFromToken(TOKEN)).thenReturn(USER_ID);
+                        when(assetService.getAssetTypeByAssetName("ABCD11")).thenReturn("fundos-imobiliarios");
+                        when(yieldRepository.existsByUserAssetYieldAt(userAssetYieldAt))
+                                        .thenReturn(true);
+
+                        int result = yieldService.registerManyYieldsReceived(TOKEN, payload);
+
+                        assertNotNull(result);
+                        assertEquals(1, result);
+                        verify(yieldRepository, times(1)).saveAll(anyList());
+                }
+        }
+
+        @Nested
+        class RegisterManyFIIYieldsReceivedInCurrentMonthByWebScraping {
+
+                @Test
+                @DisplayName("Should be able to register many FII yields received in current month by web scraping")
+                void shouldBeAbleToRegisterManyFIIYieldsReceivedInCurrentMonthByWebScraping() {
 
                         Instant baseDate = LocalDate.now().atStartOfDay(ZoneId.systemDefault()).toInstant();
                         Instant paymentDate = LocalDate.now().plusDays(15).atStartOfDay(ZoneId.systemDefault())
                                         .toInstant();
 
-                        ScraperResponseDto scraperResponseDto = new ScraperResponseDto(
-                                        anyString(),
+                        ScraperResponseDto scraperResponseDto1 = new ScraperResponseDto(
+                                        "ABCD11",
+                                        new BigDecimal("100.00"),
+                                        new BigDecimal("0.05"),
+                                        baseDate,
+                                        paymentDate,
+                                        getYieldAt());
+                        ScraperResponseDto scraperResponseDto2 = new ScraperResponseDto(
+                                        "XYZW11",
                                         new BigDecimal("100.00"),
                                         new BigDecimal("0.05"),
                                         baseDate,
                                         paymentDate,
                                         getYieldAt());
 
-                        when(tokenService.extractUserIdFromToken(TOKEN)).thenReturn(USER_ID);
-                        when(scraperService.fiiYieldScraping("fundos-imobiliarios", "ASSET1"))
-                                        .thenReturn(scraperResponseDto);
+                        when(walletService.getAllAssetNames()).thenReturn(List.of("ABCD11", "XYZW11"));
+                        when(assetService.getAssetTypeByAssetName("ABCD11")).thenReturn("fundos-imobiliarios");
+                        when(assetService.getAssetTypeByAssetName("XYZW11")).thenReturn("fundos-imobiliarios");
+                        when(walletService.getAllUserIdsWithWalletCreatedByAssetName("ABCD11"))
+                                        .thenReturn(List.of(USER_ID));
+                        when(walletService.getAllUserIdsWithWalletCreatedByAssetName("XYZW11"))
+                                        .thenReturn(List.of(USER_ID));
+                        when(scraperService.fiiYieldScraping("fundos-imobiliarios", "ABCD11"))
+                                        .thenReturn(scraperResponseDto1);
+                        when(scraperService.fiiYieldScraping("fundos-imobiliarios", "XYZW11"))
+                                        .thenReturn(scraperResponseDto2);
+                        when(yieldRepository.existsByUserAssetYieldAt(USER_ID + "ABCD11" + "202411")).thenReturn(false);
+                        when(yieldRepository.existsByUserAssetYieldAt(USER_ID + "XYZW11" + "202411")).thenReturn(false);
+                        when(walletService.getQuotaAmountOfAssetByUserId(USER_ID, "ABCD11")).thenReturn(100);
+                        when(walletService.getQuotaAmountOfAssetByUserId(USER_ID, "XYZW11")).thenReturn(100);
 
-                        yieldService.registerManyYieldsReceived(TOKEN, assets);
+                        yieldService.registerManyFIIYieldsReceivedInCurrentMonthByWebScraping();
 
-                        verify(yieldRepository).save(any(YieldEntity.class));
+                        @SuppressWarnings("unchecked")
+                        ArgumentCaptor<List<YieldEntity>> captor = ArgumentCaptor.forClass(List.class);
+                        verify(yieldRepository, times(1)).saveAll(captor.capture());
+
+                        List<YieldEntity> savedEntities = captor.getValue();
+                        assertEquals(2, savedEntities.size());
+
+                        YieldEntity firstEntity = savedEntities.get(0);
+                        YieldEntity secondEntity = savedEntities.get(1);
+
+                        assertEquals("ABCD11", firstEntity.getAssetName());
+                        assertEquals("XYZW11", secondEntity.getAssetName());
                 }
         }
 

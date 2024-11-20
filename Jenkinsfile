@@ -1,4 +1,6 @@
 pipeline {
+    agent any
+
     triggers {
         pollSCM '* * * * *'
     }
@@ -6,13 +8,18 @@ pipeline {
     stages {
         stage('Build') {
             steps {
-                sh './mvnw clean'
+                sh 'mvn -B -DskipTests clean package'
             }
         }
 
         stage('Unit Test') {
             steps {
-                sh './mvnw test'
+                sh 'mvn test'
+            }
+            post {
+                always {
+                    junit 'target/surefire-reports/*.xml' 
+                }
             }
         }
     }
