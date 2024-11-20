@@ -14,7 +14,9 @@ import personal.investwallet.modules.asset.AssetService;
 import personal.investwallet.modules.wallet.WalletService;
 import personal.investwallet.modules.webscraper.ScraperService;
 import personal.investwallet.modules.webscraper.dto.ScraperResponseDto;
-import personal.investwallet.modules.yield.dto.YieldInfoResponse;
+import personal.investwallet.modules.yield.dto.YieldAssetNameRequestDto;
+import personal.investwallet.modules.yield.dto.YieldInfoByAssetNameResponseDto;
+import personal.investwallet.modules.yield.dto.YieldInfoByYieldAtResponseDto;
 import personal.investwallet.modules.yield.dto.YieldRequestDto;
 import personal.investwallet.modules.yield.dto.YieldTimeIntervalRequestDto;
 import personal.investwallet.security.TokenService;
@@ -47,7 +49,8 @@ public class YieldService {
     @Autowired
     TokenService tokenService;
 
-    public Map<String, List<YieldInfoResponse>> fetchAllYieldsByTimeInterval(String token, YieldTimeIntervalRequestDto payload) {
+    public Map<String, List<YieldInfoByYieldAtResponseDto>> fetchAllYieldsByTimeInterval(String token,
+            YieldTimeIntervalRequestDto payload) {
 
         String userId = tokenService.extractUserIdFromToken(token);
 
@@ -59,19 +62,42 @@ public class YieldService {
             yieldList.addAll(result);
         }
 
-        Map<String, List<YieldInfoResponse>> resultMap = new HashMap<>();
+        Map<String, List<YieldInfoByYieldAtResponseDto>> resultMap = new HashMap<>();
 
         for (YieldEntity entity : yieldList) {
             resultMap
                     .computeIfAbsent(entity.getYieldAt(), k -> new ArrayList<>())
-                    .add(new YieldInfoResponse(
+                    .add(new YieldInfoByYieldAtResponseDto(
                             entity.getAssetName(),
                             entity.getBaseDate(),
                             entity.getPaymentDate(),
                             entity.getBasePrice(),
                             entity.getIncomeValue(),
-                            entity.getYieldValue()
-                    ));
+                            entity.getYieldValue()));
+        }
+
+        return resultMap;
+    }
+
+    public Map<String, List<YieldInfoByAssetNameResponseDto>> fetchAllYieldAtByAssetName(String token,
+            YieldAssetNameRequestDto payload) {
+
+        String userId = tokenService.extractUserIdFromToken(token);
+
+        List<YieldEntity> yield = yieldRepository.findByUserIdAndAssetName(userId, payload.assetName());
+
+        Map<String, List<YieldInfoByAssetNameResponseDto>> resultMap = new HashMap<>();
+
+        for (YieldEntity entity : yield) {
+            resultMap
+                    .computeIfAbsent(entity.getAssetName(), k -> new ArrayList<>())
+                    .add(new YieldInfoByAssetNameResponseDto(
+                            entity.getYieldAt(),
+                            entity.getBaseDate(),
+                            entity.getPaymentDate(),
+                            entity.getBasePrice(),
+                            entity.getIncomeValue(),
+                            entity.getYieldValue()));
         }
 
         return resultMap;
@@ -121,7 +147,7 @@ public class YieldService {
                     for (String userId : userIds) {
                         String userAssetYieldAt = userId + assetName + yieldCorrentAt;
 
-                        if(!yieldRepository.existsByUserAssetYieldAt(userAssetYieldAt)) {
+                        if (!yieldRepository.existsByUserAssetYieldAt(userAssetYieldAt)) {
                             Integer quotaAmount = walletService.getQuotaAmountOfAssetByUserId(userId, assetName);
 
                             if (quotaAmount != null && quotaAmount > 0) {
@@ -137,8 +163,7 @@ public class YieldService {
                                         scraper.basePaymentDate(),
                                         scraper.basePrice(),
                                         scraper.incomeValue(),
-                                        yieldValue
-                                ));
+                                        yieldValue));
                             }
                         }
                     }
@@ -157,7 +182,7 @@ public class YieldService {
             String yieldAt = generateYieldAt(yield.baseDate());
             String userAssetYieldAt = userId + yield.assetName() + yieldAt;
 
-            if(!yieldRepository.existsByUserAssetYieldAt(userAssetYieldAt)) {
+            if (!yieldRepository.existsByUserAssetYieldAt(userAssetYieldAt)) {
                 yieldList.add(new YieldEntity(
                         UUID.randomUUID().toString(),
                         userId,
@@ -168,8 +193,7 @@ public class YieldService {
                         yield.paymentDate(),
                         yield.basePrice(),
                         yield.incomeValue(),
-                        yield.yieldValue()
-                ));
+                        yield.yieldValue()));
             }
         }
         return yieldList;
@@ -227,22 +251,19 @@ public class YieldService {
                 BigDecimal incomeValue = parseBigDecimal(row[5], "Valor do Rendimento", rowNum + 2);
                 BigDecimal yieldValue = parseBigDecimal(row[6], "Valor do Yield", rowNum + 2);
 
-               result.add(new YieldRequestDto(
-                       assetName,
-                       baseLocalDate.atStartOfDay(ZoneId.systemDefault()).toInstant(),
-                       paymentLocalDate.atStartOfDay(ZoneId.systemDefault()).toInstant(),
-                       basePrice,
-                       incomeValue,
-                       yieldValue
-               ));
+                result.add(new YieldRequestDto(
+                        assetName,
+                        baseLocalDate.atStartOfDay(ZoneId.systemDefault()).toInstant(),
+                        paymentLocalDate.atStartOfDay(ZoneId.systemDefault()).toInstant(),
+                        basePrice,
+                        incomeValue,
+                        yieldValue));
             } catch (DateTimeParseException e) {
                 throw new InvalidDateFormatException(
-                        "Erro na linha " + (rowNum + 2) + ": " + e.getMessage()
-                );
+                        "Erro na linha " + (rowNum + 2) + ": " + e.getMessage());
             } catch (NumberFormatException e) {
                 throw new InvalidNumberFormatException(
-                        "Erro na linha " + (rowNum + 2) + ": " + e.getMessage()
-                );
+                        "Erro na linha " + (rowNum + 2) + ": " + e.getMessage());
             }
         }
 
@@ -296,16 +317,14 @@ public class YieldService {
 
         if (header.length != expectedHeaders.length) {
             throw new InvalidFileFormatException(
-                    "Formato de cabeçalho inválido. Esperado: " + String.join(", ", expectedHeaders)
-            );
+                    "Formato de cabeçalho inválido. Esperado: " + String.join(", ", expectedHeaders));
         }
 
         for (int i = 0; i < expectedHeaders.length; i++) {
             if (!header[i].trim().equalsIgnoreCase(expectedHeaders[i])) {
                 throw new InvalidFileFormatException(
                         "Coluna inválida no cabeçalho. Esperado: '" + expectedHeaders[i] +
-                                "', Encontrado: '" + header[i].trim() + "'"
-                );
+                                "', Encontrado: '" + header[i].trim() + "'");
             }
         }
     }
@@ -314,15 +333,12 @@ public class YieldService {
 
         if (row.length != 7)
             throw new InvalidFileFormatException(
-                    "A linha " + rowNum + " possui número incorreto de colunas"
-            );
-
+                    "A linha " + rowNum + " possui número incorreto de colunas");
 
         for (int i = 0; i < row.length; i++) {
             if (row[i] == null || row[i].trim().isEmpty()) {
                 throw new InvalidFileFormatException(
-                        "Na linha " + rowNum + ", a coluna " + (i + 1) + " está vazia"
-                );
+                        "Na linha " + rowNum + ", a coluna " + (i + 1) + " está vazia");
             }
         }
     }
@@ -331,23 +347,20 @@ public class YieldService {
 
         if (paymentDate.isBefore(baseDate))
             throw new InvalidDateFormatException(
-                    "A data de pagamento precisa ser maior que a data base de cálculo do dividendo"
-            );
+                    "A data de pagamento precisa ser maior que a data base de cálculo do dividendo");
 
         int currentYear = LocalDate.now().getYear();
 
         if (baseDate.getYear() > currentYear || paymentDate.getYear() > currentYear)
             throw new InvalidDateFormatException(
-                    "O ano da data base e/ou da data de pagamento precisa ser menor ou igual a ano corrente"
-            );
+                    "O ano da data base e/ou da data de pagamento precisa ser menor ou igual a ano corrente");
     }
 
     private static void validateYieldAt(String yieldAt) {
 
         if (yieldAt.length() != 6)
             throw new InvalidStringFormatException(
-                    "O yieldAt deve conter apenas 6 caracteres contendo o ano (yyyy) e o mês (mm)"
-            );
+                    "O yieldAt deve conter apenas 6 caracteres contendo o ano (yyyy) e o mês (mm)");
 
         int currentYear = LocalDate.now().getYear();
 
@@ -357,26 +370,23 @@ public class YieldService {
 
             if (year > currentYear)
                 throw new InvalidStringFormatException(
-                        "O ano informado no YieldAt deve ter 4 caracteres e ser menor ou igual ao ano corrente"
-                );
+                        "O ano informado no YieldAt deve ter 4 caracteres e ser menor ou igual ao ano corrente");
 
             if (month > 12)
                 throw new InvalidStringFormatException(
-                        "O mês informado no YieldAt deve ter 2 caracteres e ser válido"
-                );
+                        "O mês informado no YieldAt deve ter 2 caracteres e ser válido");
         }
     }
 
     private static LocalDate parseDate(String dateStr, DateTimeFormatter formatter,
-                                       String fieldName, int rowNum) {
+            String fieldName, int rowNum) {
 
         try {
             return LocalDate.parse(dateStr.trim(), formatter);
         } catch (DateTimeParseException e) {
             throw new InvalidDateFormatException(
                     "Erro na linha " + rowNum + ", " + fieldName +
-                            ": formato de data inválido. Use dd/MM/yyyy"
-            );
+                            ": formato de data inválido. Use dd/MM/yyyy");
         }
     }
 
@@ -387,8 +397,7 @@ public class YieldService {
         } catch (NumberFormatException e) {
             throw new InvalidNumberFormatException(
                     "Erro na linha " + rowNum + ", " + fieldName +
-                            ": valor numérico inválido"
-            );
+                            ": valor numérico inválido");
         }
     }
 }
