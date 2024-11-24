@@ -3,6 +3,7 @@ package personal.investwallet.modules.yield;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.*;
@@ -36,6 +37,7 @@ import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
+@Tag("unit")
 public class YieldServiceUnitTest {
 
         @Mock
@@ -550,7 +552,7 @@ public class YieldServiceUnitTest {
 
                         String invalidDateCsvContent = """
                                         Asset Name, Yield At, Base Date, Payment Date, Base Price, Income Value, Yield Value
-                                        ASSET1, 202311, 30/10/2025, 15/11/2025, 100.00, 5.00, 0.05
+                                        ASSET1, 202311, 30/10/2125, 15/11/2125, 100.00, 5.00, 0.05
                                         """;
 
                         MultipartFile file = new MockMultipartFile(
@@ -692,8 +694,8 @@ public class YieldServiceUnitTest {
                 }
 
                 @Test
-                @DisplayName("Should be able to register many yields received with duplicate yield provided")
-                void shouldBeAbleToRegisterManyYieldsReceivedWhitManyDistinctAssets() {
+                @DisplayName("Should not be able to register yield received with user asset yield at already exists")
+                void shouldNotBeAbleToRegisterYieldReceivedWithUserAssetYieldAtAlreadyExists() {
 
                         YieldRequestDto yield1 = new YieldRequestDto(
                                         "ABCD11",
@@ -712,11 +714,12 @@ public class YieldServiceUnitTest {
                         when(yieldRepository.existsByUserAssetYieldAt(userAssetYieldAt))
                                         .thenReturn(true);
 
-                        int result = yieldService.registerManyYieldsReceived(TOKEN, payload);
+                        BadRequestException exception = assertThrows(BadRequestException.class,
+                                        () -> yieldService.registerManyYieldsReceived(TOKEN, payload));
 
-                        assertNotNull(result);
-                        assertEquals(1, result);
-                        verify(yieldRepository, times(1)).saveAll(anyList());
+                        assertEquals(
+                                        "O(s) dividendo(s) enviado(s) já estão registrados.",
+                                        exception.getMessage());
                 }
         }
 
