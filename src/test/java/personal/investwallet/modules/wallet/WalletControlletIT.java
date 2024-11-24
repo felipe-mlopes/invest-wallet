@@ -37,6 +37,7 @@ import static org.junit.jupiter.api.Assertions.*;
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @Testcontainers
 @TestClassOrder(ClassOrderer.OrderAnnotation.class)
+@Tag("integration")
 public class WalletControlletIT {
 
         @SuppressWarnings("resource")
@@ -484,108 +485,6 @@ public class WalletControlletIT {
 
                 @Test
                 @Order(5)
-                void addManyPurchasesByCSV_ShouldThrowBadRequestWhenHeaderContainsAnInvalidColumnQuantityInFile() {
-
-                        String invalidHeaderContent = """
-                                        Asset Name, Date, Amount, Quota Price, Value / Quota
-                                        ABCD11,01/01/2024,10,28.51,2.851
-                                        ABCD11,02/10/2024,5,120.29,24.058,INVALID
-                                        """;
-
-                        MockMultipartFile csvFile = new MockMultipartFile(
-                                        "file",
-                                        "file.csv",
-                                        "text/csv",
-                                        invalidHeaderContent.getBytes());
-
-                        headers.setContentType(MediaType.MULTIPART_FORM_DATA);
-
-                        MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
-                        body.add("file", csvFile.getResource());
-
-                        HttpEntity<MultiValueMap<String, Object>> requestEntity = new HttpEntity<>(body, headers);
-
-                        ResponseEntity<WallerSuccessResponseDto> response = restTemplate.exchange(
-                                        "/wallet/purchases",
-                                        HttpMethod.POST,
-                                        requestEntity,
-                                        WallerSuccessResponseDto.class);
-
-                        String message = "A linha 3 possui número incorreto de colunas";
-                        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
-                        assertEquals(message, response.getBody().message());
-                }
-
-                @Test
-                @Order(6)
-                void addManyPurchasesByCSV_ShouldThrowBadRequestWhenRowContainsAnInvalidColumnNameInFile() {
-
-                        String invalidHeaderContent = """
-                                        Asset Name, Date, Amount, Quota Price, Value / Quota
-                                        ABCD11,01/01/2024,10,28.51,2.851
-                                         ,02/10/2024,5,120.29,10.85
-                                        """;
-
-                        MockMultipartFile csvFile = new MockMultipartFile(
-                                        "file",
-                                        "file.csv",
-                                        "text/csv",
-                                        invalidHeaderContent.getBytes());
-
-                        headers.setContentType(MediaType.MULTIPART_FORM_DATA);
-
-                        MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
-                        body.add("file", csvFile.getResource());
-
-                        HttpEntity<MultiValueMap<String, Object>> requestEntity = new HttpEntity<>(body, headers);
-
-                        ResponseEntity<WallerSuccessResponseDto> response = restTemplate.exchange(
-                                        "/wallet/purchases",
-                                        HttpMethod.POST,
-                                        requestEntity,
-                                        WallerSuccessResponseDto.class);
-
-                        String message = "Na linha 3, a coluna 1 está vazia";
-                        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
-                        assertEquals(message, response.getBody().message());
-                }
-
-                @Test
-                @Order(7)
-                void addManyPurchasesByCSV_ShouldThrowBadRequestWhenRowContainsAnInvalidColumnQuantityInFile() {
-
-                        String invalidHeaderContent = """
-                                        Asset Name, Date, Amount, Quota Price
-                                        ABCD11,01/01/2024,10,28.51,2.851
-                                        ABCD11,02/10/2024,5,120.29,24.058
-                                        """;
-
-                        MockMultipartFile csvFile = new MockMultipartFile(
-                                        "file",
-                                        "file.csv",
-                                        "text/csv",
-                                        invalidHeaderContent.getBytes());
-
-                        headers.setContentType(MediaType.MULTIPART_FORM_DATA);
-
-                        MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
-                        body.add("file", csvFile.getResource());
-
-                        HttpEntity<MultiValueMap<String, Object>> requestEntity = new HttpEntity<>(body, headers);
-
-                        ResponseEntity<WallerSuccessResponseDto> response = restTemplate.exchange(
-                                        "/wallet/purchases",
-                                        HttpMethod.POST,
-                                        requestEntity,
-                                        WallerSuccessResponseDto.class);
-
-                        String message = "Formato de cabeçalho inválido. Esperado: Asset Name, Date, Amount, Quota Price, Value / Quota";
-                        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
-                        assertEquals(message, response.getBody().message());
-                }
-
-                @Test
-                @Order(8)
                 void addManyPurchasesByCSV_ShouldThrowBadRequestWhenHeaderContainsAnInvalidColumnNameInFile() {
 
                         String invalidHeaderContent = """
@@ -619,10 +518,112 @@ public class WalletControlletIT {
                 }
 
                 @Test
+                @Order(6)
+                void addManyPurchasesByCSV_ShouldThrowBadRequestWhenHeaderContainsAnInvalidColumnQuantityInFile() {
+
+                        String invalidHeaderContent = """
+                                        Asset Name, Date, Amount, Quota Price, Value / Quota
+                                        ABCD11,01/01/2024,10,28.51,2.851
+                                        ABCD11,02/10/2024,5,120.29,24.058,INVALID
+                                        """;
+
+                        MockMultipartFile csvFile = new MockMultipartFile(
+                                        "file",
+                                        "file.csv",
+                                        "text/csv",
+                                        invalidHeaderContent.getBytes());
+
+                        headers.setContentType(MediaType.MULTIPART_FORM_DATA);
+
+                        MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
+                        body.add("file", csvFile.getResource());
+
+                        HttpEntity<MultiValueMap<String, Object>> requestEntity = new HttpEntity<>(body, headers);
+
+                        ResponseEntity<WallerSuccessResponseDto> response = restTemplate.exchange(
+                                        "/wallet/purchases",
+                                        HttpMethod.POST,
+                                        requestEntity,
+                                        WallerSuccessResponseDto.class);
+
+                        String message = "A linha 3 possui número incorreto de colunas";
+                        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+                        assertEquals(message, response.getBody().message());
+                }
+
+                @Test
+                @Order(7)
+                void addManyPurchasesByCSV_ShouldThrowBadRequestWhenRowContainsAnInvalidColumnNameInFile() {
+
+                        String invalidRowContent = """
+                                        Asset Name, Date, Amount, Quota Price, Value / Quota
+                                        ABCD11,01/01/2024,10,28.51,2.851
+                                         ,02/10/2024,5,120.29,10.85
+                                        """;
+
+                        MockMultipartFile csvFile = new MockMultipartFile(
+                                        "file",
+                                        "file.csv",
+                                        "text/csv",
+                                        invalidRowContent.getBytes());
+
+                        headers.setContentType(MediaType.MULTIPART_FORM_DATA);
+
+                        MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
+                        body.add("file", csvFile.getResource());
+
+                        HttpEntity<MultiValueMap<String, Object>> requestEntity = new HttpEntity<>(body, headers);
+
+                        ResponseEntity<WallerSuccessResponseDto> response = restTemplate.exchange(
+                                        "/wallet/purchases",
+                                        HttpMethod.POST,
+                                        requestEntity,
+                                        WallerSuccessResponseDto.class);
+
+                        String message = "Na linha 3, a coluna 1 está vazia";
+                        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+                        assertEquals(message, response.getBody().message());
+                }
+
+                @Test
+                @Order(8)
+                void addManyPurchasesByCSV_ShouldThrowBadRequestWhenRowContainsAnInvalidColumnQuantityInFile() {
+
+                        String invalidRowContent = """
+                                        Asset Name, Date, Amount, Quota Price, Value / Quota
+                                        ABCD11,01/01/2024,10,28.51,2.851
+                                        ABCD11,02/10/2024,5,120.29,24.058, Invalid
+                                        """;
+
+                        MockMultipartFile csvFile = new MockMultipartFile(
+                                        "file",
+                                        "file.csv",
+                                        "text/csv",
+                                        invalidRowContent.getBytes());
+
+                        headers.setContentType(MediaType.MULTIPART_FORM_DATA);
+
+                        MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
+                        body.add("file", csvFile.getResource());
+
+                        HttpEntity<MultiValueMap<String, Object>> requestEntity = new HttpEntity<>(body, headers);
+
+                        ResponseEntity<WallerSuccessResponseDto> response = restTemplate.exchange(
+                                        "/wallet/purchases",
+                                        HttpMethod.POST,
+                                        requestEntity,
+                                        WallerSuccessResponseDto.class);
+
+                        String message = "A linha 3 possui número incorregto de colunas";
+                        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+                        assertEquals(message, response.getBody().message());
+                }
+
+                @Test
                 @Order(9)
                 void addManyPurchasesByCSV_ShouldThrowBadRequestWithInvalidDateInFile() {
 
-                        String invalidHeaderContent = """
+                        String invalidDate = """
                                         Asset Name, Date, Amount, Quota Price, Value / Quota
                                         ABCD11,01/01/2024,10,28.51,2.851
                                         ABCD11,10/2024,5,120.29,24.058
@@ -632,7 +633,7 @@ public class WalletControlletIT {
                                         "file",
                                         "file.csv",
                                         "text/csv",
-                                        invalidHeaderContent.getBytes());
+                                        invalidDate.getBytes());
 
                         headers.setContentType(MediaType.MULTIPART_FORM_DATA);
 
