@@ -2,6 +2,7 @@ package personal.investwallet.modules.mailing;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -17,9 +18,13 @@ import personal.investwallet.exceptions.EmailSendException;
 import java.lang.reflect.Method;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.matches;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
+@Tag("unit")
 class EmailServiceUnitTest {
 
     @Value("${MAIL_USERNAME}")

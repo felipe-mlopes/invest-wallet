@@ -6,6 +6,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -24,9 +25,11 @@ import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
+@Tag("unit")
 public class TokenServiceUnitTest {
 
     @Mock
@@ -85,13 +88,12 @@ public class TokenServiceUnitTest {
 
             try (MockedStatic<JWT> mockedJWT = mockStatic(JWT.class)) {
 
-                mockedJWT.when(() ->
-                        JWT
-                                .create()
-                                .withIssuer("login-auth-api")
-                                .withSubject(userEntity.getId())
-                                .withExpiresAt(expiresAt)
-                                .sign(algorithm))
+                mockedJWT.when(() -> JWT
+                        .create()
+                        .withIssuer("login-auth-api")
+                        .withSubject(userEntity.getId())
+                        .withExpiresAt(expiresAt)
+                        .sign(algorithm))
                         .thenThrow(new JWTGenerateFailedException("Erro inesperado enquanto estava autenticando"));
 
                 JWTGenerateFailedException exception = assertThrows(JWTGenerateFailedException.class,
@@ -146,12 +148,10 @@ public class TokenServiceUnitTest {
 
             tokenService.addTokenToCookies(token, httpServletResponse);
 
-            verify(httpServletResponse, times(1)).addCookie(argThat(cookie ->
-                    "access_token".equals(cookie.getName()) &&
+            verify(httpServletResponse, times(1)).addCookie(argThat(cookie -> "access_token".equals(cookie.getName()) &&
                     token.equals(cookie.getValue()) &&
                     cookie.getMaxAge() == 24 * 60 * 60 &&
-                    "/".equals(cookie.getPath())
-            ));
+                    "/".equals(cookie.getPath())));
         }
     }
 }

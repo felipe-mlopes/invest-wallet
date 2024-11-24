@@ -7,10 +7,13 @@ import jakarta.validation.ValidatorFactory;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
+import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import personal.investwallet.modules.mailing.EmailService;
@@ -20,6 +23,8 @@ import personal.investwallet.security.TokenService;
 import static org.mockito.Mockito.*;
 import static org.junit.jupiter.api.Assertions.*;
 
+@ExtendWith(MockitoExtension.class)
+@Tag("unit")
 class UserControllerUnitTest {
 
     @InjectMocks
@@ -57,8 +62,7 @@ class UserControllerUnitTest {
             UserCreateRequestDto payload = new UserCreateRequestDto(
                     "John Doe",
                     "test@example.com",
-                    "Password123"
-            );
+                    "Password123");
 
             ResponseEntity<UserSuccessResponseDto> response = userController.create(payload);
 
@@ -77,8 +81,7 @@ class UserControllerUnitTest {
             UserCreateRequestDto invalidPayload = new UserCreateRequestDto(
                     "",
                     "",
-                    ""
-            );
+                    "");
 
             var violations = validator.validate(invalidPayload);
 
@@ -94,15 +97,16 @@ class UserControllerUnitTest {
             UserCreateRequestDto invalidPayload = new UserCreateRequestDto(
                     "A",
                     "invalid-email",
-                    "pass"
-            );
+                    "pass");
 
             var violations = validator.validate(invalidPayload);
 
             assertEquals(3, violations.size());
-            assertTrue(violations.stream().anyMatch(v -> v.getMessage().equals("O nome deve ter entre 2 e 30 caracteres")));
+            assertTrue(violations.stream()
+                    .anyMatch(v -> v.getMessage().equals("O nome deve ter entre 2 e 30 caracteres")));
             assertTrue(violations.stream().anyMatch(v -> v.getMessage().equals("Formato inválido de email")));
-            assertTrue(violations.stream().anyMatch(v -> v.getMessage().equals("A senha deve ter entre 6 e 12 caracteres")));
+            assertTrue(violations.stream()
+                    .anyMatch(v -> v.getMessage().equals("A senha deve ter entre 6 e 12 caracteres")));
         }
     }
 
@@ -115,8 +119,7 @@ class UserControllerUnitTest {
 
             UserValidateRequestDto payload = new UserValidateRequestDto(
                     "test@example.com",
-                    "ABC4"
-            );
+                    "ABC4");
 
             ResponseEntity<UserSuccessResponseDto> response = userController.validate(payload);
 
@@ -133,13 +136,13 @@ class UserControllerUnitTest {
 
             UserValidateRequestDto invalidPayload = new UserValidateRequestDto(
                     "",
-                    ""
-            );
+                    "");
 
             var violations = validator.validate(invalidPayload);
 
             assertTrue(violations.stream().anyMatch(v -> v.getMessage().equals("O e-mail não pode ser vazio")));
-            assertTrue(violations.stream().anyMatch(v -> v.getMessage().equals("O código de verificação não pode ser vazio")));
+            assertTrue(violations.stream()
+                    .anyMatch(v -> v.getMessage().equals("O código de verificação não pode ser vazio")));
         }
 
         @Test
@@ -148,14 +151,14 @@ class UserControllerUnitTest {
 
             UserValidateRequestDto invalidPayload = new UserValidateRequestDto(
                     "invalid-email",
-                    "password"
-            );
+                    "password");
 
             var violations = validator.validate(invalidPayload);
 
             assertEquals(2, violations.size());
             assertTrue(violations.stream().anyMatch(v -> v.getMessage().equals("Formato inválido de email")));
-            assertTrue(violations.stream().anyMatch(v -> v.getMessage().equals("O código de verificação deve conter 4 dígitos")));
+            assertTrue(violations.stream()
+                    .anyMatch(v -> v.getMessage().equals("O código de verificação deve conter 4 dígitos")));
         }
     }
 
@@ -167,8 +170,7 @@ class UserControllerUnitTest {
         void shouldBeAbleToRevalidateUserVerificationCodeWithValidPayload() {
 
             UserRevalidateRequestDto payload = new UserRevalidateRequestDto(
-                    "test@example.com"
-            );
+                    "test@example.com");
 
             ResponseEntity<UserSuccessResponseDto> response = userController.revalidate(payload);
 
@@ -212,8 +214,7 @@ class UserControllerUnitTest {
 
             UserLoginRequestDto payload = new UserLoginRequestDto(
                     "test@example.com",
-                    "Password1234"
-            );
+                    "Password1234");
 
             ResponseEntity<TokenResponseDto> response = userController.login(payload, httpServletResponse);
 
@@ -231,8 +232,7 @@ class UserControllerUnitTest {
 
             UserLoginRequestDto invalidPayload = new UserLoginRequestDto(
                     "",
-                    ""
-            );
+                    "");
 
             var violations = validator.validate(invalidPayload);
 
@@ -246,8 +246,7 @@ class UserControllerUnitTest {
 
             UserLoginRequestDto invalidPayload = new UserLoginRequestDto(
                     "invalid-email",
-                    "Password1234"
-            );
+                    "Password1234");
 
             var violations = validator.validate(invalidPayload);
 

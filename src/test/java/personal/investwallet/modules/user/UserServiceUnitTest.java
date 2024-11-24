@@ -3,12 +3,15 @@ package personal.investwallet.modules.user;
 import jakarta.servlet.http.HttpServletResponse;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.*;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -26,8 +29,8 @@ import personal.investwallet.security.TokenService;
 import java.time.Instant;
 import java.util.Optional;
 
-
 @ExtendWith(MockitoExtension.class)
+@Tag("unit")
 class UserServiceUnitTest {
 
     @Mock
@@ -104,8 +107,7 @@ class UserServiceUnitTest {
 
             verify(userRepository, times(1)).updateCheckedAsTrueByEmail(
                     eq(payload.email()),
-                    any(Instant.class)
-            );
+                    any(Instant.class));
             verify(cache).evict(payload.email());
             assertEquals("Validação concluída com sucesso", result);
         }
@@ -119,7 +121,8 @@ class UserServiceUnitTest {
             when(userRepository.findByEmail(payload.email())).thenReturn(Optional.empty());
 
             verify(userRepository, never()).updateCheckedAsTrueByEmail(anyString(), any(Instant.class));
-            UnauthorizedException exception = assertThrows(UnauthorizedException.class, () -> userService.validateUser(payload));
+            UnauthorizedException exception = assertThrows(UnauthorizedException.class,
+                    () -> userService.validateUser(payload));
             assertEquals("Email inválido", exception.getMessage());
         }
 
@@ -134,7 +137,8 @@ class UserServiceUnitTest {
             when(cache.get(payload.email(), String.class)).thenReturn("1234");
 
             verify(userRepository, never()).updateCheckedAsTrueByEmail(anyString(), any(Instant.class));
-            UnauthorizedException exception = assertThrows(UnauthorizedException.class, () -> userService.validateUser(payload));
+            UnauthorizedException exception = assertThrows(UnauthorizedException.class,
+                    () -> userService.validateUser(payload));
             assertEquals("O código informado não confere", exception.getMessage());
         }
 
@@ -148,7 +152,8 @@ class UserServiceUnitTest {
             when(cacheManager.getCache("verificationCodes")).thenReturn(null);
 
             verify(userRepository, never()).updateCheckedAsTrueByEmail(anyString(), any(Instant.class));
-            UnauthorizedException exception = assertThrows(UnauthorizedException.class, () -> userService.validateUser(payload));
+            UnauthorizedException exception = assertThrows(UnauthorizedException.class,
+                    () -> userService.validateUser(payload));
             assertEquals("Tempo de validação expirado", exception.getMessage());
         }
     }
@@ -180,7 +185,8 @@ class UserServiceUnitTest {
 
             when(userRepository.findByEmail(payload.email())).thenReturn(Optional.empty());
 
-            UnauthorizedException exception = assertThrows(UnauthorizedException.class, () -> userService.verifyExistingUserAndVerificationCode(payload));
+            UnauthorizedException exception = assertThrows(UnauthorizedException.class,
+                    () -> userService.verifyExistingUserAndVerificationCode(payload));
             assertEquals("Email inválido", exception.getMessage());
         }
 
@@ -196,7 +202,8 @@ class UserServiceUnitTest {
 
             when(userRepository.findByEmail(payload.email())).thenReturn(Optional.of(userEntity));
 
-            ConflictException exception = assertThrows(ConflictException.class, () -> userService.verifyExistingUserAndVerificationCode(payload));
+            ConflictException exception = assertThrows(ConflictException.class,
+                    () -> userService.verifyExistingUserAndVerificationCode(payload));
             assertEquals("O cadastro do usuário já está válido", exception.getMessage());
         }
 
@@ -213,7 +220,8 @@ class UserServiceUnitTest {
             when(cacheManager.getCache("verificationCodes")).thenReturn(cache);
             when(cache.get(payload.email(), String.class)).thenReturn("ABCD");
 
-            ConflictException exception = assertThrows(ConflictException.class, () -> userService.verifyExistingUserAndVerificationCode(payload));
+            ConflictException exception = assertThrows(ConflictException.class,
+                    () -> userService.verifyExistingUserAndVerificationCode(payload));
             assertEquals("O código de verificação enviado anteriormente ainda está válido", exception.getMessage());
         }
     }
@@ -233,7 +241,7 @@ class UserServiceUnitTest {
             UserLoginRequestDto payload = getUserLoginRequestDto();
 
             when(userRepository.findByEmail(payload.email())).thenReturn(Optional.of(userEntity));
-            when(passwordEncoder.matches(payload.password(),userEntity.getPassword())).thenReturn(true);
+            when(passwordEncoder.matches(payload.password(), userEntity.getPassword())).thenReturn(true);
             when(tokenService.generateToken(userEntity)).thenReturn("generatedToken123");
 
             String token = userService.authUser(payload, response);
@@ -255,7 +263,8 @@ class UserServiceUnitTest {
 
             verify(passwordEncoder, never()).matches(anyString(), anyString());
             verify(tokenService, never()).generateToken(any(UserEntity.class));
-            UnauthorizedException exception = assertThrows(UnauthorizedException.class, () -> userService.authUser(payload, response));
+            UnauthorizedException exception = assertThrows(UnauthorizedException.class,
+                    () -> userService.authUser(payload, response));
             assertEquals("Usuário e/ou senha inválidos", exception.getMessage());
 
         }
@@ -273,7 +282,8 @@ class UserServiceUnitTest {
             when(passwordEncoder.matches(payload.password(), userEntity.getPassword())).thenReturn(false);
 
             verify(tokenService, never()).generateToken(any(UserEntity.class));
-            UnauthorizedException exception = assertThrows(UnauthorizedException.class, () -> userService.authUser(payload, response));
+            UnauthorizedException exception = assertThrows(UnauthorizedException.class,
+                    () -> userService.authUser(payload, response));
             assertEquals("Usuário e/ou senha inválidos", exception.getMessage());
         }
 
@@ -291,7 +301,8 @@ class UserServiceUnitTest {
             when(passwordEncoder.matches(payload.password(), userEntity.getPassword())).thenReturn(true);
 
             verify(tokenService, never()).generateToken(any(UserEntity.class));
-            UnauthorizedException exception = assertThrows(UnauthorizedException.class, () -> userService.authUser(payload, response));
+            UnauthorizedException exception = assertThrows(UnauthorizedException.class,
+                    () -> userService.authUser(payload, response));
             assertEquals("Usuário não confirmou seu cadastro por e-mail", exception.getMessage());
         }
 
@@ -301,27 +312,23 @@ class UserServiceUnitTest {
         return new UserCreateRequestDto(
                 "John Doe",
                 "john.doe@example.com",
-                "Test1234"
-        );
+                "Test1234");
     }
 
     private static UserLoginRequestDto getUserLoginRequestDto() {
         return new UserLoginRequestDto(
                 "john.doe@example.com",
-                "Test1234"
-        );
+                "Test1234");
     }
 
     private static UserValidateRequestDto getUserValidateRequestDto() {
         return new UserValidateRequestDto(
                 "john.doe@example.com",
-                "A1B2"
-        );
+                "A1B2");
     }
 
     private static UserRevalidateRequestDto getUserRevalidateRequestDto() {
         return new UserRevalidateRequestDto(
-                "john.doe@example.com"
-        );
+                "john.doe@example.com");
     }
 }
