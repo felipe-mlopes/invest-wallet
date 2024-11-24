@@ -32,6 +32,7 @@ import static org.junit.jupiter.api.ClassOrderer.OrderAnnotation;
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @Testcontainers
 @TestClassOrder(OrderAnnotation.class)
+@Tag("integration")
 public class UserControllerIT {
 
     @SuppressWarnings("resource")
