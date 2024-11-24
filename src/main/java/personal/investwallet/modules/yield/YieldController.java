@@ -10,6 +10,7 @@ import personal.investwallet.modules.yield.dto.YieldAssetNameRequestDto;
 import personal.investwallet.modules.yield.dto.YieldInfoByAssetNameResponseDto;
 import personal.investwallet.modules.yield.dto.YieldInfoByYieldAtResponseDto;
 import personal.investwallet.modules.yield.dto.YieldRequestDto;
+import personal.investwallet.modules.yield.dto.YieldSuccessResponseDto;
 import personal.investwallet.modules.yield.dto.YieldTimeIntervalRequestDto;
 
 import java.util.List;
@@ -23,21 +24,41 @@ public class YieldController {
     private YieldService yieldService;
 
     @PostMapping()
-    public ResponseEntity<String> createMany(
+    public ResponseEntity<YieldSuccessResponseDto> createMany(
             @CookieValue(value = "access_token") String token,
             @Valid @RequestBody List<YieldRequestDto> yields) {
 
         int result = yieldService.registerManyYieldsReceived(token, yields);
-        return ResponseEntity.created(null).body("Foram registrados " + result + " dividendos com sucesso.");
+
+        String message;
+
+        if (result == 1) {
+            message = "Foi registrado " + result + " dividendo com sucesso.";
+        } else {
+            message = "Foram registrados " + result + " dividendos com sucesso.";
+        }
+
+        return ResponseEntity.created(null)
+                .body(new YieldSuccessResponseDto(message));
     }
 
     @PostMapping("/file")
-    public ResponseEntity<String> createManyByCsv(
+    public ResponseEntity<YieldSuccessResponseDto> createManyByCsv(
             @CookieValue(value = "access_token") String token,
             MultipartFile file) {
 
         int result = yieldService.registerManyYieldsReceivedByCsv(token, file);
-        return ResponseEntity.created(null).body("O arquivo com " + result + " linhas foi registrado com sucesso.");
+
+        String message;
+
+        if (result == 1) {
+            message = "O arquivo com " + result + " linha foi registrado com sucesso.";
+        } else {
+            message = "O arquivo com " + result + " linhas foi registrado com sucesso.";
+        }
+
+        return ResponseEntity.created(null)
+                .body(new YieldSuccessResponseDto(message));
     }
 
     @GetMapping("/yield-at")
