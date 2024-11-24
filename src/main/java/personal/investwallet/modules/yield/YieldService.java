@@ -6,6 +6,7 @@ import com.opencsv.CSVReader;
 import com.opencsv.CSVReaderBuilder;
 import com.opencsv.exceptions.CsvException;
 import lombok.SneakyThrows;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -109,9 +110,12 @@ public class YieldService {
 
         List<YieldEntity> yieldList = getYieldEntities(yields, userId);
 
+        if (yieldList.size() == 0)
+            throw new BadRequestException("O(s) dividendo(s) enviado(s) já estão registrados.");
+
         yieldRepository.saveAll(yieldList);
 
-        return yields.size();
+        return yieldList.size();
     }
 
     @SneakyThrows
@@ -124,9 +128,12 @@ public class YieldService {
         List<YieldRequestDto> yields = readCSVFile(file);
         List<YieldEntity> yieldList = getYieldEntities(yields, userId);
 
+        if (yieldList.size() == 0)
+            throw new BadRequestException("O(s) dividendo(s) enviado(s) já estão registrados.");
+
         yieldRepository.saveAll(yieldList);
 
-        return yields.size();
+        return yieldList.size();
     }
 
     public void registerManyFIIYieldsReceivedInCurrentMonthByWebScraping() {
@@ -345,15 +352,15 @@ public class YieldService {
 
     private static void validateDate(LocalDate baseDate, LocalDate paymentDate) {
 
-        if (paymentDate.isBefore(baseDate))
-            throw new InvalidDateFormatException(
-                    "A data de pagamento precisa ser maior que a data base de cálculo do dividendo");
-
         int currentYear = LocalDate.now().getYear();
 
         if (baseDate.getYear() > currentYear || paymentDate.getYear() > currentYear)
             throw new InvalidDateFormatException(
                     "O ano da data base e/ou da data de pagamento precisa ser menor ou igual a ano corrente");
+
+        if (paymentDate.isBefore(baseDate))
+            throw new InvalidDateFormatException(
+                    "A data de pagamento precisa ser maior que a data base de cálculo do dividendo");
     }
 
     private static void validateYieldAt(String yieldAt) {
