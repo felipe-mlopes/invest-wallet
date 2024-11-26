@@ -197,7 +197,7 @@
                 		<artifactId>maven-surefire-plugin</artifactId>
                 		<version>3.2.5</version>
                 		<configuration>
-					<groups>unit,integration</groups>
+					<groups>${test.groups}</groups>
                			</configuration>
             		</plugin>
 		</plugins>
