@@ -197,15 +197,12 @@
                 <artifactId>maven-surefire-plugin</artifactId>
                 <version>3.2.5</version>
                 <configuration>
-                    <!-- Configuração para executar testes por grupo de tags -->
                     <groups>integration</groups>
-                    
-                    <!-- Opções para melhorar o diagnóstico de falhas -->
                     <redirectTestOutputToFile>true</redirectTestOutputToFile>
                     <failIfNoTests>false</failIfNoTests>
-                    
-                    <!-- Configurações de memória e JVM -->
-                    <argLine>-Xmx1024m -XX:MaxPermSize=256m</argLine>
+					<forkCount>1C</forkCount>
+        			<reuseForks>true</reuseForks>
+        			<argLine>-Xmx1024m</argLine>
                 </configuration>
             </plugin>
 
