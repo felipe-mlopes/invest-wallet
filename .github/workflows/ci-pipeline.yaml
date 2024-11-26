@@ -41,15 +41,17 @@ jobs:
       mongo:
         image: mongo:8.0.3
         options: >-
-          --memory 2g
+          --memory 4g
           --cpus 2
-          --health-cmd="mongo --eval 'db.adminCommand(\"ping\")'"
+          --health-cmd="mongosh --eval 'db.runCommand({ping:1})'"
           --health-interval=10s
           --health-timeout=5s
           --health-retries=5
+          --sysctl net.core.somaxconn=4096
+          --sysctl vm.max_map_count=262144
         env:
-          MONGO_ROOT_USERNAME: ${{ secrets.MONGO_ROOT_USERNAME }}
-          MONGO_ROOT_PASSWORD: ${{ secrets.MONGO_ROOT_PASSWORD }}
+          MONGO_INITDB_ROOT_USERNAME: ${{ secrets.MONGO_ROOT_USERNAME }}
+          MONGO_INITDB_ROOT_PASSWORD: ${{ secrets.MONGO_ROOT_PASSWORD }}
         ports:
           - 27017:27017
 
@@ -70,6 +72,12 @@ jobs:
           key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
           restore-keys: |
             ${{ runner.os }}-maven-
+
+      - name: Set up MongoDB environment
+        run: |
+          sudo sysctl -w vm.swappiness=1
+          sudo sysctl -w vm.max_map_count=262144
+          echo "GLIBC_TUNABLES=glibc.pthread.rseq=0" >> $GITHUB_ENV
 
       - name: Set up Maven
         run: mvn -B dependency:resolve
