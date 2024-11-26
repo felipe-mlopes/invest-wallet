@@ -31,7 +31,7 @@ jobs:
         run: mvn -B dependency:resolve
 
       - name: Run unit tests
-        run: mvn test -Dgroups=unit
+        run: mvn test
 
   integration-tests:
     runs-on: ubuntu-latest
@@ -86,7 +86,7 @@ jobs:
         env:
           SPRING_PROFILES_ACTIVE: test
           MONGO_URI: mongodb://localhost:27017/testdb
-        run: mvn test -Dgroups=integration
+        run: mvn verify
 
       - name: Cleanup MongoDB
         if: always()
