@@ -213,10 +213,17 @@
 		                        <goal>integration-test</goal>
 		                        <goal>verify</goal>
 		                    </goals>
-		                    <configuration>
-		                        <groups>integration</groups>
-		                    </configuration>
 		                </execution>
+			    	<configuration>
+			                <includes>
+			                    <include>**/*IT.java</include>
+			                </includes>
+			                <excludes>
+			                    <exclude>**/*Test.java</exclude>
+			                    <exclude>**/*Tests.java</exclude>
+			                </excludes>
+			                <groups>integration</groups>
+		            	</configuration>
 		            </executions>
 		        </plugin>
 		</plugins>
