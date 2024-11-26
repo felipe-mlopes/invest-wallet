@@ -86,8 +86,7 @@ jobs:
         env:
           SPRING_PROFILES_ACTIVE: test
           MONGO_URI: mongodb://localhost:27017/testdb
-        run: |
-          mvn clean test -Dgroups=integration
+        run: mvn test -Dgroups=integration
 
       - name: Cleanup MongoDB
         if: always()
