@@ -214,7 +214,7 @@
 		                        <goal>verify</goal>
 		                    </goals>
 		                </execution>
-			    	<configuration>
+			    		<configuration>
 			                <includes>
 			                    <include>**/*IT.java</include>
 			                </includes>
