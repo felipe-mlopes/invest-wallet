@@ -86,6 +86,7 @@ jobs:
         env:
           SPRING_PROFILES_ACTIVE: test
           MONGO_URI: mongodb://localhost:27017/testdb
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
         run: mvn verify
 
       - name: Cleanup MongoDB
