@@ -20,6 +20,20 @@ jobs:
           distribution: "temurin"
           cache: maven
 
+      - name: Set environment variables
+        env:
+          MONGO_ROOT_USERNAME: ${{ secrets.MONGO_ROOT_USERNAME }}
+          MONGO_ROOT_PASSWORD: ${{ secrets.MONGO_ROOT_PASSWORD }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          YIELD_URL_SCRAPING: ${{ secrets.YIELD_URL_SCRAPING }}
+          ASSETS_URL_SCRAPING: ${{ secrets.ASSETS_URL_SCRAPING }}
+          MAIL_HOST: ${{ secrets.MAIL_HOST }}
+          MAIL_PORT: ${{ secrets.MAIL_PORT }}
+          MAIL_USERNAME: ${{ secrets.MAIL_USERNAME }}
+          MAIL_PASS: ${{ secrets.MAIL_PASS }}
+        run: |
+          echo "Setting environment variables for the application."
+          
       - name: Build and test with Maven
         run: mvn --batch-mode package
 
