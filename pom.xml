@@ -191,44 +191,18 @@
 					</excludes>
 				</configuration>
 			</plugin>
-			<!-- Plugin para testes unitários -->
-		        <plugin>
-		            <groupId>org.apache.maven.plugins</groupId>
-		            <artifactId>maven-surefire-plugin</artifactId>
-		            <version>3.1.0</version>
-		            <configuration>
-						<excludes>
-							<exclude>**/*IT.java</exclude>
-						</excludes>
-		                <groups>unit</groups>
-		            </configuration>
-		        </plugin>
-		
-		        <!-- Plugin para testes de integração -->
-		        <plugin>
-		            <groupId>org.apache.maven.plugins</groupId>
-		            <artifactId>maven-failsafe-plugin</artifactId>
-		            <version>3.1.0</version>
-		            <executions>
-		                <execution>
-		                    <id>integration-tests</id>
-		                    <goals>
-		                        <goal>integration-test</goal>
-		                        <goal>verify</goal>
-		                    </goals>
-							<configuration>
-								<includes>
-									<include>**/*IT.java</include>
-								</includes>
-								<excludes>
-									<exclude>**/*Test.java</exclude>
-									<exclude>**/*Tests.java</exclude>
-								</excludes>
-								<groups>integration</groups>
-							</configuration>
-						</execution>
-		            </executions>
-		        </plugin>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+		                <artifactId>maven-surefire-plugin</artifactId>
+		                <configuration>
+		                    <reuseForks>false</reuseForks>
+		                    <forkCount>1</forkCount>
+		                </configuration>
+		    	</plugin>
+	            	<plugin>
+	                	<groupId>io.github.git-commit-id</groupId>
+	                	<artifactId>git-commit-id-maven-plugin</artifactId>
+	            	</plugin>
 		</plugins>
 	</build>
 
