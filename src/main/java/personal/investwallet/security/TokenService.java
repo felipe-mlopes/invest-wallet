@@ -13,8 +13,6 @@ import org.springframework.stereotype.Service;
 import com.auth0.jwt.JWT;
 import com.auth0.jwt.algorithms.Algorithm;
 import com.auth0.jwt.exceptions.JWTCreationException;
-import com.auth0.jwt.exceptions.JWTVerificationException;
-
 import personal.investwallet.exceptions.BadRequestException;
 import personal.investwallet.exceptions.JWTGenerateFailedException;
 import personal.investwallet.modules.user.UserEntity;

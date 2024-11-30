@@ -17,7 +17,6 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import personal.investwallet.exceptions.ResourceNotFoundException;
 import personal.investwallet.exceptions.UnauthorizedException;
 import personal.investwallet.modules.user.UserEntity;
 import personal.investwallet.modules.user.UserRepository;
@@ -35,15 +34,20 @@ public class SecurityFilter extends OncePerRequestFilter {
             "/user/register",
             "/user/validate",
             "/user/revalidate",
-            "/user/login"
-    );
+            "/user/login",
+            "/swagger-ui",
+            "/swagger-ui/",
+            "/swagger-ui.html",
+            "/v3/api-docs",
+            "/webjars/",
+            "/configuration/",
+            "/swagger-resources");
 
     @Override
     protected void doFilterInternal(
             HttpServletRequest request,
             HttpServletResponse response,
-            FilterChain filterChain
-    ) throws ServletException, IOException {
+            FilterChain filterChain) throws ServletException, IOException {
 
         if (isPublicUrl(request.getRequestURI())) {
             filterChain.doFilter(request, response);
@@ -64,7 +68,7 @@ public class SecurityFilter extends OncePerRequestFilter {
     }
 
     private boolean isPublicUrl(String requestUri) {
-        return PUBLIC_URLS.contains(requestUri);
+        return PUBLIC_URLS.stream().anyMatch(requestUri::startsWith);
     }
 
     private String recoverToken(HttpServletRequest request) {

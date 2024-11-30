@@ -6,6 +6,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import personal.investwallet.modules.yield.dto.YieldAssetNameRequestDto;
 import personal.investwallet.modules.yield.dto.YieldInfoByAssetNameResponseDto;
 import personal.investwallet.modules.yield.dto.YieldInfoByYieldAtResponseDto;
@@ -23,6 +25,7 @@ public class YieldController {
     @Autowired
     private YieldService yieldService;
 
+    @Operation(summary = "Registrar diversos dividendos", security = @SecurityRequirement(name = "access_token"))
     @PostMapping()
     public ResponseEntity<YieldSuccessResponseDto> createMany(
             @CookieValue(value = "access_token") String token,
@@ -42,6 +45,7 @@ public class YieldController {
                 .body(new YieldSuccessResponseDto(message));
     }
 
+    @Operation(summary = "Registrar diversos dividendos via arquivo CSV", security = @SecurityRequirement(name = "access_token"))
     @PostMapping("/file")
     public ResponseEntity<YieldSuccessResponseDto> createManyByCsv(
             @CookieValue(value = "access_token") String token,
@@ -61,6 +65,7 @@ public class YieldController {
                 .body(new YieldSuccessResponseDto(message));
     }
 
+    @Operation(summary = "Busca diversos dividendos do usuário dentro de um intervalo de tempo", security = @SecurityRequirement(name = "access_token"))
     @GetMapping("/yield-at")
     public ResponseEntity<Map<String, List<YieldInfoByYieldAtResponseDto>>> getManyByUserIdAndYieldAt(
             @CookieValue(value = "access_token") String token,
@@ -71,6 +76,7 @@ public class YieldController {
         return ResponseEntity.ok(response);
     }
 
+    @Operation(summary = "Busca diversos dividendos do usuário de um ativo específico", security = @SecurityRequirement(name = "access_token"))
     @GetMapping("/asset-name")
     public ResponseEntity<Map<String, List<YieldInfoByAssetNameResponseDto>>> getManyByUserIdAndAssetName(
             @CookieValue(value = "access_token") String token,
