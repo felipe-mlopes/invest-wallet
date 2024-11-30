@@ -61,7 +61,6 @@ public class WalletEntity {
         public static class PurchasesInfo {
 
             @Id
-            @Field("purchase_id")
             private String purchaseId;
 
             @Field("purchase_amount")
@@ -83,7 +82,6 @@ public class WalletEntity {
         public static class SalesInfo {
 
             @Id
-            @Field("sale_id")
             private String saleId;
 
             @Field("sale_amount")
