@@ -38,8 +38,6 @@ jobs:
         uses: atomicjar/testcontainers-cloud-setup-action@v1
         with:
           token: ${{ secrets.TC_CLOUD_TOKEN }}
-          
-      - name: Build and test with Maven
-        run: mvn --batch-mode package
 
-     
+      - name: Run Tests with Debugging
+        run: mvn -X test
