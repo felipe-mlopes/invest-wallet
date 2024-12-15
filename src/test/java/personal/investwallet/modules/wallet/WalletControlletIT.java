@@ -614,7 +614,7 @@ public class WalletControlletIT {
                                         requestEntity,
                                         WallerSuccessResponseDto.class);
 
-                        String message = "A linha 3 possui número incorregto de colunas";
+                        String message = "A linha 3 possui número incorreto de colunas";
                         assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
                         assertEquals(message, response.getBody().message());
                 }

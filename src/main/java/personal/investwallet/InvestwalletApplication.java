@@ -6,12 +6,14 @@ import org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfi
 import org.springframework.cache.annotation.EnableCaching;
 import org.springframework.cloud.openfeign.EnableFeignClients;
 import org.springframework.context.annotation.Bean;
+import org.springframework.data.mongodb.repository.config.EnableMongoRepositories;
 import org.springframework.scheduling.annotation.EnableAsync;
 import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
-@SpringBootApplication(exclude = {SecurityAutoConfiguration.class})
+@SpringBootApplication(exclude = { SecurityAutoConfiguration.class })
+@EnableMongoRepositories
 @EnableFeignClients
 @EnableScheduling
 @EnableAsync
@@ -25,7 +27,7 @@ public class InvestwalletApplication {
 	@Bean
 	public PasswordEncoder getPasswordEncoder() {
 
-        return new BCryptPasswordEncoder();
+		return new BCryptPasswordEncoder();
 	}
 
 }

@@ -1,15 +1,15 @@
 services:
   mongo_db:
-    image: 'mongo:latest'
+    image: "mongo:latest"
     restart: unless-stopped
     environment:
-      - 'MONGO_INITDB_ROOT_USERNAME=$MONGO_ROOT_USERNAME'
-      - 'MONGO_INITDB_ROOT_PASSWORD=$MONGO_ROOT_PASSWORD'
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USERNAME}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD}
     ports:
-      - '27017:27017'
+      - "27017:27017"
     volumes:
-      - 'db:/data/db'
-  
+      - "db:/data/db"
+
   jenkins:
     image: jenkins/jenkins:lts-jdk17
     container_name: jenkins-jdk-17
@@ -20,13 +20,14 @@ services:
       - JENKINS_OPTS=--httpPort=9090
     ports:
       - "9090:9090"
-      - '5000:5000'
+      - "5000:5000"
     labels:
       org.springframework.boot.ignore: true
     volumes:
-      - jenkins_home:/var/jenkins_home
+      - "jenkins_home:/var/jenkins_home"
+      - "/var/run/docker.sock:/var/run/docker.sock"
 
 volumes:
   db:
   jenkins_home:
-    name: jenkins_home
+    driver: local
