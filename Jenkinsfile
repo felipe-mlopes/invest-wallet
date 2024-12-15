@@ -1,21 +1,15 @@
 pipeline {
-    agent any
+    agent {
+        docker { 
+            image 'maven:3.8.6-openjdk-17-slim'
+            args '-v $HOME/.m2:/root/.m2'
+        }
+    }
 
     stages {
-        stage('Checkout') {
-            steps {
-                checkout scm
-            }
-        }
-
         stage ('Unit Tests') {
             steps {
-                sh 'mvn clean test'
-            }
-            post {
-                always {
-                    junit '**/target/surefire-reports/*.xml'
-                }
+                sh 'mvn test'
             }
         }
 

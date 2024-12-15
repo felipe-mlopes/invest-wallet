@@ -18,6 +18,7 @@ services:
     restart: always
     environment:
       - JENKINS_OPTS=--httpPort=9090
+      - JAVA_OPTS="-Djenkins.install.runSetupWizard=false"
     ports:
       - "9090:9090"
       - "5000:5000"
@@ -30,4 +31,3 @@ services:
 volumes:
   db:
   jenkins_home:
-    driver: local
