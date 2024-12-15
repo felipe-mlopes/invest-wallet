@@ -760,8 +760,6 @@ public class YieldServiceUnitTest {
                                         .thenReturn(scraperResponseDto1);
                         when(scraperService.fiiYieldScraping("fundos-imobiliarios", "XYZW11"))
                                         .thenReturn(scraperResponseDto2);
-                        when(yieldRepository.existsByUserAssetYieldAt(USER_ID + "ABCD11" + "202411")).thenReturn(false);
-                        when(yieldRepository.existsByUserAssetYieldAt(USER_ID + "XYZW11" + "202411")).thenReturn(false);
                         when(walletService.getQuotaAmountOfAssetByUserId(USER_ID, "ABCD11")).thenReturn(100);
                         when(walletService.getQuotaAmountOfAssetByUserId(USER_ID, "XYZW11")).thenReturn(100);
 
