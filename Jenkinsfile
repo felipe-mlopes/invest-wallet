@@ -1,27 +1,22 @@
 pipeline {
-    agent any
+    agent {
+        docker {
+            image 'eclipse-temurin:17.0.9_9-jdk-jammy'
+            args '--network host -u root -v /var/run/docker.sock:/var/run/docker.sock'
+        }
+    }
 
     stages {
         stage ('Unit Tests') {
-            agent {
-                docker {
-                    image 'maven:3.8.6-openjdk-17-slim'
-                    args '-v $HOME/.m2:/root/.m2'
-                }
-            }
             steps {
+                echo "Running Unit Tests..."
                 sh 'mvn test'
             }
         }
 
         stage('Build') {
-            agent {
-                docker {
-                    image 'maven:3.8.6-openjdk-17-slim'
-                    args '-v $HOME/.m2:/root/.m2'
-                }
-            }
             steps {
+                echo "Building Application..."
                 sh 'mvn clean package -DskipTests'
             }
         }
