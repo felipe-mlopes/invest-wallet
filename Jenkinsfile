@@ -1,23 +1,23 @@
 pipeline {
-    agent {
-        docker {
-            image 'eclipse-temurin:17.0.9_9-jdk-jammy'
-            args '--network host -u root -v /var/run/docker.sock:/var/run/docker.sock'
-        }
+    agent any
+
+    environment {
+        DOCKER_IMAGE = 'maven:4.0.0-eclipse-temurin-17'
     }
 
     stages {
-        stage ('Unit Tests') {
+        stage('Run in Docker') {
             steps {
-                echo "Running Unit Tests..."
-                sh 'mvn test'
-            }
-        }
-
-        stage('Build') {
-            steps {
-                echo "Building Application..."
-                sh 'mvn clean package -DskipTests'
+                script {
+                    docker.image(DOCKER_IMAGE).inside('-v /var/run/docker.sock:/var/run/docker.sock -v $HOME/.m2:/root/.m2') {
+                        stage('Run Unit Tests') {
+                            sh 'mvn test'
+                        }
+                        stage('Build Application') {
+                            sh 'mvn clean package'
+                        }
+                    }
+                }
             }
         }
     }
