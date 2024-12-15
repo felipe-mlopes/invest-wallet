@@ -33,8 +33,7 @@ public class SecurityConfig {
                         "/user/login",
                         "/swagger-ui/**",
                         "/v3/api-docs/**",
-                        "/swagger-ui.html"
-        };
+                        "/swagger-ui.html" };
 
         @Bean
         public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
@@ -42,13 +41,12 @@ public class SecurityConfig {
                                 .csrf(AbstractHttpConfigurer::disable)
                                 .sessionManagement(session -> session
                                                 .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                                .exceptionHandling(e -> e
-                                                .authenticationEntryPoint(authenticationEntryPoint))
                                 .authorizeHttpRequests(authorize -> authorize
                                                 .requestMatchers(WHITE_LIST_URL).permitAll()
                                                 .anyRequest().authenticated())
-                                .addFilterBefore(securityFilter, UsernamePasswordAuthenticationFilter.class)
-                                .headers(headers -> headers.frameOptions(frameOption -> frameOption.sameOrigin()));
+                                .exceptionHandling(e -> e
+                                                .authenticationEntryPoint(authenticationEntryPoint))
+                                .addFilterBefore(securityFilter, UsernamePasswordAuthenticationFilter.class);
                 return http.build();
         }
 
