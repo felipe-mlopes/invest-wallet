@@ -1,12 +1,10 @@
-FROM jenkins/jenkins:lts-jdk17
+FROM eclipse-temurin:17-jdk
 
-# Switch to root user for installations
-USER root
+# Configuração do diretório de trabalho
+WORKDIR /app
 
-# Install Maven
-RUN apt-get update && \
-    apt-get install -y maven && \
-    mvn --version
+# Copiar o arquivo JAR gerado pelo Maven para o container
+COPY target/*.jar app.jar
 
-# Switch back to jenkins user
-USER jenkins
+# Comando para executar o JAR
+CMD ["java", "-jar", "app.jar"]
