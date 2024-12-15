@@ -1,10 +1,8 @@
-FROM eclipse-temurin:17-jdk
+FROM jenkins/jenkins:lts-jdk17
 
-# Configuração do diretório de trabalho
-WORKDIR /app
+# if we want to install via apt
+USER root
+RUN apt-get update && apt-get install -y ruby make more-thing-here
 
-# Copiar o arquivo JAR gerado pelo Maven para o container
-COPY target/*.jar app.jar
-
-# Comando para executar o JAR
-CMD ["java", "-jar", "app.jar"]
+# drop back to the regular jenkins user - good practice
+USER jenkins

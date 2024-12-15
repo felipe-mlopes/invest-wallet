@@ -11,23 +11,13 @@ services:
       - "db:/data/db"
 
   jenkins:
-    image: jenkins/jenkins:lts-jdk17
-    container_name: jenkins-jdk-17
-    privileged: true
-    user: root
-    restart: always
-    environment:
-      - JENKINS_OPTS=--httpPort=9090
-      - JAVA_OPTS="-Djenkins.install.runSetupWizard=false"
+    image: jenkins/jenkins:jdk17
     ports:
-      - "9090:9090"
-      - "5000:5000"
-    labels:
-      org.springframework.boot.ignore: true
+      - "8080:8080"
     volumes:
-      - "jenkins_home:/var/jenkins_home"
-      - "/var/run/docker.sock:/var/run/docker.sock"
-      - "/usr/bin/docker:/usr/bin/docker"
+      - jenkins_home:/var/jenkins_home
+  ssh-agent:
+    image: jenkins/ssh-agent
 
 volumes:
   db:
