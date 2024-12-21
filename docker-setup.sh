@@ -19,6 +19,9 @@ apt-get update && apt-get install -y \
 groupadd -g 999 docker || true
 usermod -aG docker jenkins || true
 
+# Garantir que o Jenkins tem permissões no volume
+chown -R 1000:1000 /var/jenkins_home
+
 echo "Docker CLI instalado com sucesso!"
 
 # Garantir que o Jenkins inicie normalmente
