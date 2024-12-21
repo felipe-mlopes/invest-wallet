@@ -2,6 +2,7 @@ pipeline {
     agent { 
         docker {
             image 'maven:3.9-eclipse-temurin-17'
+            args '-v /var/run/docker.sock:/var/run/docker.sock'
         }
      }
 
@@ -10,13 +11,13 @@ pipeline {
      }
 
     stages {
-        stage('Build and Compile') {
+        stage('Build') {
             steps {
-                sh 'mvn --version'
+                sh 'mvn clean compile'
             }
         }
 
-        stage('Run Unit Tests') {
+        stage('Unit Tests') {
             steps {
                 sh 'mvn test'
             }
