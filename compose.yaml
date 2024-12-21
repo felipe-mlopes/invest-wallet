@@ -14,19 +14,24 @@ services:
     image: jenkins/jenkins:lts-jdk17
     container_name: jenkins-jdk-17
     privileged: true
-    user: root
-    restart: always
-    environment:
-      - JENKINS_OPTS=--httpPort=9090
-      - JAVA_OPTS="-Djenkins.install.runSetupWizard=false"
     ports:
       - "9090:9090"
-      - "5000:5000"
-    labels:
-      org.springframework.boot.ignore: true
+      - "50000:50000"
     volumes:
       - "jenkins_home:/var/jenkins_home"
       - "/var/run/docker.sock:/var/run/docker.sock"
+      - "./docker-setup.sh:/usr/local/bin/docker-setup.sh"
+    environment:
+      - JENKINS_OPTS=--httpPort=9090
+      - JAVA_OPTS="-Djenkins.install.runSetupWizard=false"
+    labels:
+      org.springframework.boot.ignore: true
+    entrypoint:
+      [
+        "/bin/bash",
+        "-c",
+        "/usr/local/bin/docker-setup.sh && /usr/local/bin/jenkins.sh",
+      ]
 
 volumes:
   db:

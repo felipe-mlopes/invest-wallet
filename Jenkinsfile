@@ -1,25 +1,10 @@
 pipeline {
-    agent { 
-        docker {
-            image 'maven:3.9-eclipse-temurin-17'
-            args '-v /var/run/docker.sock:/var/run/docker.sock'
-        }
-     }
-
-     environment {
-        CI = "true"
-     }
-
+    agent any
     stages {
-        stage('Build') {
+        stage('Test Docker CLI') {
             steps {
-                sh 'mvn clean compile'
-            }
-        }
-
-        stage('Unit Tests') {
-            steps {
-                sh 'mvn test'
+                sh 'docker --version'
+                sh 'docker ps'
             }
         }
     }
