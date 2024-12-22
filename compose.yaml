@@ -25,9 +25,12 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
     restart: on-failure
     environment:
+      JENKINS_OPTS: "--httpPort=9090"
       JAVA_OPTS: "-Djenkins.install.runSetupWizard=false"
     labels:
       org.springframework.boot.ignore: true
+    privileged: true
+    user: root
 
 volumes:
   db:
