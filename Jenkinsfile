@@ -6,13 +6,12 @@ pipeline {
     }
 
     environment {
-        // Configurações do Testcontainers
-        TESTCONTAINERS_RYUK_DISABLED = "true"  // Desabilita o Ryuk
-        TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE = "/var/run/docker.sock"
+        TESTCONTAINERS_RYUK_DISABLED = "true"
         DOCKER_HOST = "unix:///var/run/docker.sock"
+        DOCKER_IP = "172.17.0.1"
         
-        // Configuração do host do Docker
-        DOCKER_IP = "172.17.0.1"  // IP mostrado no seu log
+        MAVEN_OPTS = '-Xmx1024m -XX:MaxPermSize=256m'
+        TESTCONTAINERS_CHECKS_DISABLE = "true"
     }
     
     stages {
