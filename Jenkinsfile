@@ -4,6 +4,16 @@ pipeline {
     tools {
         maven 'M3'
     }
+
+    environment {
+        // Configurações do Testcontainers
+        TESTCONTAINERS_RYUK_DISABLED = "true"  // Desabilita o Ryuk
+        TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE = "/var/run/docker.sock"
+        DOCKER_HOST = "unix:///var/run/docker.sock"
+        
+        // Configuração do host do Docker
+        DOCKER_IP = "172.17.0.1"  // IP mostrado no seu log
+    }
     
     stages {
         stage('Checkout') {
@@ -31,10 +41,6 @@ pipeline {
         }
 
         stage('Integration Tests') {
-            environment {
-                TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE = "/var/run/docker.sock"
-                DOCKER_HOST = "unix:///var/run/docker.sock"
-            }
             steps {
                 sh 'mvn verify -Pfailsafe'
             }
