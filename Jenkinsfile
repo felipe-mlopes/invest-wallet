@@ -42,11 +42,20 @@ pipeline {
 
         stage('Integration Tests') {
             steps {
-                sh 'mvn verify -Pfailsafe'
+                sh '''
+                    mvn -X verify -Pfailsafe
+                    echo "Docker info:"
+                    docker info
+                    echo "Docker socket permissions:"
+                    ls -l /var/run/docker.sock
+                '''
             }
             post {
                 always {
                     junit '**/target/failsafe-reports/*.xml'
+                }
+                failure {
+                    sh 'cat target/failsafe-reports/*.txt || true'
                 }
             }
         }
