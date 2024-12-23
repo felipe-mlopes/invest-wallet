@@ -10,7 +10,7 @@ pipeline {
         DOCKER_HOST = "unix:///var/run/docker.sock"
         DOCKER_IP = "172.17.0.1"
         
-        MAVEN_OPTS = '-Xmx1024m -XX:MaxPermSize=256m'
+        MAVEN_OPTS = '-Xmx1024m'
         TESTCONTAINERS_CHECKS_DISABLE = "true"
     }
     
@@ -43,10 +43,8 @@ pipeline {
             steps {
                 sh '''
                     mvn -X verify -Pfailsafe
-                    echo "Docker info:"
-                    docker info
-                    echo "Docker socket permissions:"
-                    ls -l /var/run/docker.sock
+                    echo "Test reports:"
+                    ls -l target/failsafe-reports/ || true
                 '''
             }
             post {
