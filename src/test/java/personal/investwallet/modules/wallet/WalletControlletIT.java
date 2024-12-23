@@ -44,6 +44,7 @@ public class WalletControlletIT {
         @Container
         static MongoDBContainer mongoDBContainer = new MongoDBContainer("mongo:latest")
                         .withExposedPorts(27017)
+                        .withReuse(true)
                         .waitingFor(Wait.forListeningPort().withStartupTimeout(Duration.ofSeconds(60)));
 
         @DynamicPropertySource

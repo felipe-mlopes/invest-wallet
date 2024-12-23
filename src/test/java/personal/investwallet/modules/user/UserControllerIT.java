@@ -2,6 +2,7 @@ package personal.investwallet.modules.user;
 
 import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.*;
+import org.junit.jupiter.api.ClassOrderer.OrderAnnotation;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.client.TestRestTemplate;
@@ -39,6 +40,7 @@ public class UserControllerIT {
     @Container
     static MongoDBContainer mongoDBContainer = new MongoDBContainer("mongo:latest")
             .withExposedPorts(27017)
+            .withReuse(true)
             .waitingFor(Wait.forListeningPort().withStartupTimeout(Duration.ofSeconds(60)));
 
     @DynamicPropertySource
