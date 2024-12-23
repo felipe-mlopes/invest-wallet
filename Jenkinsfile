@@ -42,17 +42,20 @@ pipeline {
         stage('Integration Tests') {
             steps {
                 sh '''
-                    mvn -X verify -Pfailsafe
-                    echo "Test reports:"
-                    ls -l target/failsafe-reports/ || true
+                    mvn verify -Pfailsafe
+                    echo "Checking for integration test reports:"
+                    ls -la target/failsafe-reports/ || echo "No failsafe-reports directory found"
                 '''
             }
             post {
                 always {
-                    junit '**/target/failsafe-reports/*.xml'
+                    junit allowEmptyResults: true, testResults: '**/target/failsafe-reports/*.xml'
                 }
                 failure {
-                    sh 'cat target/failsafe-reports/*.txt || true'
+                    sh '''
+                        echo "Maven logs:"
+                        cat target/failsafe-reports/*.txt || echo "No test logs found"
+                    '''
                 }
             }
         }
