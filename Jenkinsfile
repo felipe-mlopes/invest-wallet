@@ -10,7 +10,7 @@ pipeline {
         DOCKER_HOST = "unix:///var/run/docker.sock"
         DOCKER_IP = "172.17.0.1"
         
-        MAVEN_OPTS = '-Xmx1024m'
+        MAVEN_OPTS = '-Xmx2048m'
         TESTCONTAINERS_CHECKS_DISABLE = "true"
     }
     

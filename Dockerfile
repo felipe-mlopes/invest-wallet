@@ -23,4 +23,7 @@ RUN touch /var/run/docker.sock && \
     chmod 666 /var/run/docker.sock && \
     chown root:docker /var/run/docker.sock
 
+# Limitando a memória para o Jenkins dentro do Docker
+RUN echo "JAVA_OPTS=\"-Xmx2g\"" >> /var/jenkins_home/.bashrc
+
 USER jenkins

@@ -9,6 +9,8 @@ services:
       - "27017:27017"
     volumes:
       - "db:/data/db"
+    mem_limit: 2g
+    cpus: 1.0
 
   jenkins-master:
     build:
@@ -31,6 +33,8 @@ services:
       org.springframework.boot.ignore: true
     privileged: true
     user: root
+    mem_limit: 4g
+    cpus: 2.0
 
 volumes:
   db:
