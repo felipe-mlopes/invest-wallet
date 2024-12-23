@@ -19,7 +19,7 @@ pipeline {
             }
         }
         
-        stage('Test - Unit') {
+        stage('Unit Tests') {
             steps {
                 sh 'mvn test'
             }
@@ -30,24 +30,22 @@ pipeline {
             }
         }
 
-        stage('Test - Integration') {
-            agent {
-                docker {
-                    image 'eclipse-temurin:17.0.9_9-jdk-jammy'
-                    args '--network host -u root -v /var/run/docker.sock:/var/run/docker.sock'
-                }
+        stage('Integration Tests') {
+            environment {
+                TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE = "/var/run/docker.sock"
+                DOCKER_HOST = "unix:///var/run/docker.sock"
             }
             steps {
-                sh sh './mvnw verify'
+                sh 'mvn verify -Pfailsafe'
             }
             post {
                 always {
-                    junit '**/target/surefire-reports/*.xml'
+                    junit '**/target/failsafe-reports/*.xml'
                 }
             }
         }
     }
-    
+
     post {
         always {
             cleanWs()
