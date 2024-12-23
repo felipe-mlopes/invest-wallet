@@ -1,23 +1,39 @@
 pipeline {
     agent any
     
+    tools {
+        maven 'M3'
+    }
+    
     stages {
         stage('Checkout') {
             steps {
-                git(
-                    url: 'https://github.com/felipe-mlopes/invest-wallet.git',
-                    branch: 'main',
-                    changelog: true,
-                    poll: true
-                )
+                git branch: 'main',
+                    url: 'https://github.com/felipe-mlopes/invest-wallet.git'
             }
         }
         
-        stage('Test Docker CLI') {
+        stage('Build') {
             steps {
-                sh 'docker --version'
-                sh 'docker ps'
+                sh 'mvn clean package -DskipTests'
             }
+        }
+        
+        stage('Test') {
+            steps {
+                sh 'mvn test'
+            }
+            post {
+                always {
+                    junit '**/target/surefire-reports/*.xml'
+                }
+            }
+        }
+    }
+    
+    post {
+        always {
+            cleanWs()
         }
     }
 }
