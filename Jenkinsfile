@@ -38,7 +38,7 @@ pipeline {
                 }
             }
             steps {
-                sh 'mvn verify'
+                sh sh './mvnw verify'
             }
             post {
                 always {
