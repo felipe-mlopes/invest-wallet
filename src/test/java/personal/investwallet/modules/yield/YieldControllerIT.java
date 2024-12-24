@@ -50,7 +50,9 @@ public class YieldControllerIT {
         @SuppressWarnings("resource")
         @Container
         static MongoDBContainer mongoDBContainer = new MongoDBContainer("mongo:latest")
-                        .withExposedPorts(27017)
+                        .withExposedPorts(27018)
+                        .withEnv("MONGODB_PORT", "27018")
+                        .withStartupTimeout(Duration.ofSeconds(120))
                         .withReuse(true)
                         .waitingFor(Wait.forListeningPort().withStartupTimeout(Duration.ofSeconds(60)));
 
