@@ -9,9 +9,11 @@ pipeline {
         TESTCONTAINERS_RYUK_DISABLED = "true"
         DOCKER_HOST = "unix:///var/run/docker.sock"
         DOCKER_IP = "172.17.0.1"
-        
         MAVEN_OPTS = '-Xmx2048m'
         TESTCONTAINERS_CHECKS_DISABLE = "true"
+        TESTCONTAINERS_REUSE_ENABLE = "true"
+        DOCKER_CLIENT_TIMEOUT = "120"
+        COMPOSE_HTTP_TIMEOUT = "120"
     }
     
     stages {
@@ -36,6 +38,21 @@ pipeline {
                 always {
                     junit '**/target/surefire-reports/*.xml'
                 }
+            }
+        }
+
+        stage('Prepare Test Environment') {
+            steps {
+                sh '''
+                    echo "testcontainers.reuse.enable=true" > /root/.testcontainers.properties
+                    chmod 644 /root/.testcontainers.properties
+                    
+                    # Garante que o Docker tem as permissões corretas
+                    chmod 666 /var/run/docker.sock
+                    
+                    # Limpa containers antigos se necessário
+                    docker container prune -f
+                '''
             }
         }
 
