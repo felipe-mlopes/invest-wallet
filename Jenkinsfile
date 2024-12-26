@@ -41,15 +41,13 @@ pipeline {
                     def dockerImageTag = "${env.DOCKER_IMAGE}:${env.BUILD_NUMBER}"
                     def dockerImageLatest = "${env.DOCKER_IMAGE}:latest"
                     
-                    withDockerRegistry([credentialsId: "${DOCKER_CREDENTIALS_ID}", url: '']) {
-                        // Build and push with BUILD_NUMBER
-                        sh "docker build -t ${dockerImageTag} ."
-                        sh "docker push ${dockerImageTag}"
-                        
-                        // Build and push with 'latest'
-                        sh "docker tag ${dockerImageTag} ${dockerImageLatest}"
-                        sh "docker push ${dockerImageLatest}"
+                    withCredentials([usernamePassword(credentialsId: env.DOCKER_CREDENTIALS_ID, usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_TOKEN')]) {
+                        sh "echo ${DOCKER_TOKEN} | docker login -u ${DOCKER_USER} --password-stdin"
                     }
+                    sh "docker build -t ${dockerImageTag} ."
+                    sh "docker push ${dockerImageTag}"
+                    sh "docker tag ${dockerImageTag} ${dockerImageLatest}"
+                    sh "docker push ${dockerImageLatest}"
                 }
             }
         }
