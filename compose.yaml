@@ -1,17 +1,4 @@
 services:
-  mongo_db:
-    image: "mongo:latest"
-    restart: unless-stopped
-    environment:
-      MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USERNAME}
-      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD}
-    ports:
-      - "27017:27017"
-    volumes:
-      - "db:/data/db"
-    mem_limit: 2g
-    cpus: 1.0
-
   jenkins-master:
     build:
       context: .
@@ -37,5 +24,4 @@ services:
     cpus: 2.0
 
 volumes:
-  db:
   jenkins_home:
