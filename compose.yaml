@@ -23,5 +23,21 @@ services:
     mem_limit: 4g
     cpus: 2.0
 
+  invest-wallet:
+    build:
+      context: .
+      dockerfile: Dockerfile.app
+    container_name: invest-wallet
+    ports:
+      - "8080:8080"
+    restart: on-failure
+    environment:
+      - SPRING_PROFILES_ACTIVE=prod
+    depends_on:
+      - jenkins-master
+    mem_limit: 1g
+    cpus: 1.0
+
 volumes:
   jenkins_home:
+    driver: local
