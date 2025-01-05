@@ -26,7 +26,7 @@ services:
   invest-wallet:
     build:
       context: .
-      dockerfile: Dockerfile.app
+      dockerfile: Dockerfile.build
     container_name: invest-wallet
     ports:
       - "8080:8080"
