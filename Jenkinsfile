@@ -35,6 +35,14 @@ pipeline {
             }
         }
 
+        stage('SonarQube Analysis') {
+            steps {
+                withSonarQubeEnv('SonarQube') {
+                    sh 'mvn sonar:sonar'
+                }
+            }
+        }
+
         stage('Docker Build & Push') {
             steps {
                 script {
@@ -48,6 +56,15 @@ pipeline {
                     sh "docker push ${dockerImageTag}"
                     sh "docker tag ${dockerImageTag} ${dockerImageLatest}"
                     sh "docker push ${dockerImageLatest}"
+                }
+            }
+        }
+
+        stage('Image Security Scan') {
+            steps {
+                script {
+                    def dockerImageTag = "${env.DOCKER_IMAGE}:${env.BUILD_NUMBER}"
+                    sh "trivy image ${dockerImageTag} --severity HIGH,CRITICAL"
                 }
             }
         }
