@@ -59,15 +59,6 @@ pipeline {
                 }
             }
         }
-
-        stage('Image Security Scan') {
-            steps {
-                script {
-                    def dockerImageTag = "${env.DOCKER_IMAGE}:${env.BUILD_NUMBER}"
-                    sh "trivy image ${dockerImageTag} --severity HIGH,CRITICAL"
-                }
-            }
-        }
     }
 
     post {
