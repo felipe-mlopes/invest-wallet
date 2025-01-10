@@ -18,6 +18,13 @@ COPY target/*.jar app.jar
 COPY start.sh start.sh
 RUN chmod +x start.sh
 
+# Create directory for .env file and set permissions
+RUN mkdir -p /app && \
+    chown -R 1001:1001 /app
+
+# Switch to non-root user
+USER 1001
+
 # Expose application port
 EXPOSE 8080
 
