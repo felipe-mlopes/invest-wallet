@@ -29,12 +29,15 @@ PARAMS=(
     "YIELD_URL_SCRAPING"
 )
 
-# Fetch parameters and export as environment variables
+# Create .env file
+echo "# Environment variables from AWS Parameter Store" > /app/.env
+
+# Fetch parameters and add to .env file
 for param_name in "${PARAMS[@]}"; do
     # Get value from Parameter Store
     param_value=$(get_parameter "$param_name")
-    # Export as environment variable
-    export "$param_name"="$param_value"
+    # Add to .env file
+    echo "$param_name=$param_value" >> /app/.env
     echo "Loaded parameter: $param_name"
 done
 
