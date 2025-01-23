@@ -1,0 +1,43 @@
+services:
+  jenkins-master:
+    build:
+      context: .
+      dockerfile: Dockerfile.jenkins
+      args:
+        DOCKER_GID: "998"
+    container_name: jenkins-master
+    ports:
+      - "9090:9090"
+      - "50000:50000"
+    volumes:
+      - jenkins_home:/var/jenkins_home
+      - /var/run/docker.sock:/var/run/docker.sock
+    restart: on-failure
+    environment:
+      JENKINS_OPTS: "--httpPort=9090"
+      JAVA_OPTS: "-Djenkins.install.runSetupWizard=false"
+    labels:
+      org.springframework.boot.ignore: true
+    privileged: true
+    user: root
+    mem_limit: 4g
+    cpus: 2.0
+
+  invest-wallet-prod:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: invest-wallet-prod
+    ports:
+      - "8080:8080"
+    restart: on-failure
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+    depends_on:
+      - jenkins-master
+    mem_limit: 1g
+    cpus: 1.0
+
+volumes:
+  jenkins_home:
+    driver: local
