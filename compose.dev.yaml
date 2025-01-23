@@ -1,0 +1,38 @@
+services:
+  mongo_db:
+    image: "mongo:latest"
+    container_name: mongo_db
+    restart: unless-stopped
+    ports:
+      - "27018:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_DEV_USERNAME}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_DEV_PASSWORD}
+    volumes:
+      - mongo_data:/data/db
+
+  invest-wallet-dev:
+    image: openjdk:17-jdk-slim
+    container_name: springboot-app-dev
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    ports:
+      - "8080:8080"
+    restart: on-failure
+    volumes:
+      - .:/app
+      - /app/target
+    command: ["sh", "-c", "mvn spring-boot:run"]
+    depends_on:
+      - mongo_db
+    mem_limit: 1g
+    cpus: 1.0
+    environment:
+      SPRING_DATA_MONGODB_URI: mongodb://${MONGO_DEV_USERNAME}:${MONGO_DEV_PASSWORD}@mongo_db:27017/invest-wallet
+      SPRING_DATA_MONGODB_DATABASE: invest_wallet
+    env_file:
+      - .env
+
+volumes:
+  mongo_data:
