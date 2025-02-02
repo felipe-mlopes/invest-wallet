@@ -100,8 +100,6 @@ public class AssetServiceUnitTest {
             asset.setAssetName("ABCD11");
             asset.setAssetType("fundos-imobiliarios");
 
-            when(assetRepository.findByAssetName("ABCD11")).thenReturn(asset);
-
             String assetType = assetService.getAssetTypeByAssetName("ABCD11");
             assertEquals("fundos-imobiliarios", assetType);
         }
